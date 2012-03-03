@@ -1,0 +1,175 @@
+/*******************************************************************************
+ * Copyright (c) 2011, J.W. Janssen
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     J.W. Janssen - Cleanup and make API more OO-oriented.
+ *******************************************************************************/
+package nl.lxtreme.binutils.hex;
+
+
+import static org.junit.Assert.*;
+
+import java.io.*;
+
+import org.junit.*;
+
+
+/**
+ * 
+ */
+public class IntelHexReaderTest
+{
+  // CONSTANTS
+
+  private static final String TEST_SET1 = ":020000020000FC\n" //
+      + ":1000000006C04C7F406899C04D7F416896C000E0B3\n" //
+      + ":1000100002BB0FEF01BB0FEF08BB00E007BB662779\n" //
+      + ":10002000E0E0F2E17AD0402F0FEF8BD0EA9551F467";
+
+  private static final int[] TEST_RESULT1 = { 0x06, 0xc0, 0x4c, 0x7f, 0x40, 0x68, 0x99, 0xc0, 0x4d, 0x7f, 0x41, 0x68,
+      0x96, 0xc0, 0x00, 0xe0, 0x02, 0xbb, 0xf, 0xef, 0x01, 0xbb, 0x0f, 0xef, 0x08, 0xbb, 0x00, 0xe0, 0x07, 0xbb, 0x66,
+      0x27, 0xe0, 0xe0, 0xf2, 0xe1, 0x7a, 0xd0, 0x40, 0x2f, 0xf, 0xef, 0x8b, 0xd0, 0xea, 0x95, 0x51, 0xf4 };
+
+  private static final String TEST_SET2 = ":10010000214601360121470136007EFE09D2190140\n"
+                                               + ":100110002146017EB7C20001FF5F16002148011988\n"
+                                               + ":10012000194E79234623965778239EDA3F01B2CAA7\n"
+                                               + ":100130003F0156702B5E712B722B732146013421C7\n" //
+      + ":00000001FF\n";
+
+  private static final int[] TEST_RESULT2 = { 0x21, 0x46, 0x01, 0x36, 0x01, 0x21, 0x47, 0x01, 0x36, 0x00, 0x7e, 0xfe,
+      0x09, 0xd2, 0x19, 0x01, 0x21, 0x46, 0x01, 0x7e, 0xb7, 0xc2, 0x00, 0x01, 0xff, 0x5f, 0x16, 0x00, 0x21, 0x48, 0x01,
+      0x19, 0x19, 0x4e, 0x79, 0x23, 0x46, 0x23, 0x96, 0x57, 0x78, 0x23, 0x9e, 0xda, 0x3f, 0x01, 0xb2, 0xca, 0x3f, 0x01,
+      0x56, 0x70, 0x2b, 0x5e, 0x71, 0x2b, 0x72, 0x2b, 0x73, 0x21, 0x46, 0x1, 0x34, 0x21 };
+
+  private static final String TEST_SET3 = ":1000000012C081C080C07FC07EC07DC07CC07BC06C\n"
+                                               + ":1000100025C079C078C077C076C075C074C073C081\n"
+                                               + ":1000200072C071C070C011241FBECFE5D4E0DEBF26\n"
+                                               + ":10003000CDBF10E0A0E6B0E0EEE0F1E002C0059038\n"
+                                               + ":100040000D92A036B107D9F710E0A0E6B0E001C0EC\n"
+                                               + ":100050001D92A336B107E1F74DD056C01F920F9203\n"
+                                               + ":100060000FB60F9211242F933F938F9380916000CE\n"
+                                               + ":10007000882379F420916100309162002F5F3F4F17\n"
+                                               + ":10008000309362002093610083E02F3F3807D9F45A\n"
+                                               + ":1000900017C0813029F0209161003091620013C0B7\n"
+                                               + ":1000A0002091610030916200215030403093620015\n"
+                                               + ":1000B000209361002115310531F41092600003C0D6\n"
+                                               + ":1000C00081E0809360003BBD2ABD8F913F912F91CD\n"
+                                               + ":1000D0000F900FBE0F901F90189583E88FBD8EB5BF\n"
+                                               + ":1000E00081608EBD1BBC1ABC82E087BB84E089BFE7\n"
+                                               + ":1000F00078940895F2DF85B7806885BF889585B7C5\n"
+                                               + ":0E0100008F7785BFF8CF7CCFF89400C0FFCF7B\n"//
+      + ":00000001FF\n";
+
+  private static final int[] TEST_RESULT3 = { 0x12, 0xc0, 0x81, 0xc0, 0x80, 0xc0, 0x7f, 0xc0, 0x7e, 0xc0, 0x7d, 0xc0,
+      0x7c, 0xc0, 0x7b, 0xc0, 0x25, 0xc0, 0x79, 0xc0, 0x78, 0xc0, 0x77, 0xc0, 0x76, 0xc0, 0x75, 0xc0, 0x74, 0xc0, 0x73,
+      0xc0, 0x72, 0xc0, 0x71, 0xc0, 0x70, 0xc0, 0x11, 0x24, 0x1f, 0xbe, 0xcf, 0xe5, 0xd4, 0xe0, 0xde, 0xbf, 0xcd, 0xbf,
+      0x10, 0xe0, 0xa0, 0xe6, 0xb0, 0xe0, 0xee, 0xe0, 0xf1, 0xe0, 0x2, 0xc0, 0x5, 0x90, 0xd, 0x92, 0xa0, 0x36, 0xb1,
+      0x7, 0xd9, 0xf7, 0x10, 0xe0, 0xa0, 0xe6, 0xb0, 0xe0, 0x1, 0xc0, 0x1d, 0x92, 0xa3, 0x36, 0xb1, 0x7, 0xe1, 0xf7,
+      0x4d, 0xd0, 0x56, 0xc0, 0x1f, 0x92, 0xf, 0x92, 0xf, 0xb6, 0xf, 0x92, 0x11, 0x24, 0x2f, 0x93, 0x3f, 0x93, 0x8f,
+      0x93, 0x80, 0x91, 0x60, 0x0, 0x88, 0x23, 0x79, 0xf4, 0x20, 0x91, 0x61, 0x0, 0x30, 0x91, 0x62, 0x0, 0x2f, 0x5f,
+      0x3f, 0x4f, 0x30, 0x93, 0x62, 0x0, 0x20, 0x93, 0x61, 0x0, 0x83, 0xe0, 0x2f, 0x3f, 0x38, 0x7, 0xd9, 0xf4, 0x17,
+      0xc0, 0x81, 0x30, 0x29, 0xf0, 0x20, 0x91, 0x61, 0x0, 0x30, 0x91, 0x62, 0x0, 0x13, 0xc0, 0x20, 0x91, 0x61, 0x0,
+      0x30, 0x91, 0x62, 0x0, 0x21, 0x50, 0x30, 0x40, 0x30, 0x93, 0x62, 0x0, 0x20, 0x93, 0x61, 0x0, 0x21, 0x15, 0x31,
+      0x5, 0x31, 0xf4, 0x10, 0x92, 0x60, 0x0, 0x3, 0xc0, 0x81, 0xe0, 0x80, 0x93, 0x60, 0x0, 0x3b, 0xbd, 0x2a, 0xbd,
+      0x8f, 0x91, 0x3f, 0x91, 0x2f, 0x91, 0xf, 0x90, 0xf, 0xbe, 0xf, 0x90, 0x1f, 0x90, 0x18, 0x95, 0x83, 0xe8, 0x8f,
+      0xbd, 0x8e, 0xb5, 0x81, 0x60, 0x8e, 0xbd, 0x1b, 0xbc, 0x1a, 0xbc, 0x82, 0xe0, 0x87, 0xbb, 0x84, 0xe0, 0x89, 0xbf,
+      0x78, 0x94, 0x8, 0x95, 0xf2, 0xdf, 0x85, 0xb7, 0x80, 0x68, 0x85, 0xbf, 0x88, 0x95, 0x85, 0xb7, 0x8f, 0x77, 0x85,
+      0xbf, 0xf8, 0xcf, 0x7c, 0xcf, 0xf8, 0x94, 0x0, 0xc0, 0xff, 0xcf };
+
+  // METHODS
+
+  /**
+   * Test method for
+   * {@link nl.lxtreme.arm.util.reader.cpemu.util.data.impl.IntelHexReader#readByte()} .
+   */
+  @Test
+  public void testTestSet1Ok() throws Exception
+  {
+    IntelHexReader hexParser = new IntelHexReader(new StringReader(TEST_SET1));
+
+    int address = 0x00;
+    int dataByte = 0x00;
+
+    do
+    {
+      dataByte = hexParser.readByte();
+      if (dataByte == -1)
+      {
+        break;
+      }
+
+      assertEquals(TEST_RESULT1[address], dataByte);
+      assertEquals(address++, hexParser.getAddress());
+    }
+    while (dataByte != -1);
+
+    // If all records were processed correctly, the ending address should be
+    // this...
+    assertEquals(48, address);
+  }
+
+  /**
+   * Test method for
+   * {@link nl.lxtreme.arm.util.reader.cpemu.util.data.impl.IntelHexReader#readByte()} .
+   */
+  @Test
+  public void testTestSet2Ok() throws Exception
+  {
+    IntelHexReader hexParser = new IntelHexReader(new StringReader(TEST_SET2));
+
+    int address = 256;
+    int dataByte = 0x00;
+
+    do
+    {
+      dataByte = hexParser.readByte();
+      if (dataByte == -1)
+      {
+        break;
+      }
+
+      assertEquals(TEST_RESULT2[address - 256], dataByte);
+      assertEquals(address++, hexParser.getAddress());
+    }
+    while (dataByte != -1);
+
+    // If all records were processed correctly, the ending address should be
+    // this...
+    assertEquals(320, address);
+  }
+
+  @Test
+  public void testTestSet3Ok() throws Exception
+  {
+    final Reader reader = new StringReader(TEST_SET3);
+    IntelHexReader hexParser = new IntelHexReader(reader);
+
+    int address = 0x00;
+    int dataByte = 0x00;
+
+    do
+    {
+      dataByte = hexParser.readByte();
+      if (dataByte == -1)
+      {
+        break;
+      }
+
+      assertEquals(TEST_RESULT3[address], dataByte);
+      assertEquals(address++, hexParser.getAddress());
+    }
+    while (dataByte != -1);
+
+    // If all records were processed correctly, the ending address should be
+    // this...
+    assertEquals(270, address);
+  }
+
+} /* IntelHexDataProviderTest */
+
+/* EOF */
