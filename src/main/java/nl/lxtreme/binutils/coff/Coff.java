@@ -16,8 +16,6 @@ package nl.lxtreme.binutils.coff;
 
 import java.io.*;
 
-import nl.lxtreme.binutils.elf.*;
-
 
 /**
  * 
@@ -41,22 +39,22 @@ public class Coff
    * @param aFile
    * @throws IOException
    */
-  public Coff(File aFile) throws IOException
+  public Coff( File aFile ) throws IOException
   {
-    this.rfile = new ERandomAccessFile(aFile, "r");
-    this.rfile.setEndiannes(true /* aLittleEndian */);
+    this.rfile = new ERandomAccessFile( aFile, "r" );
+    this.rfile.setEndiannes( true /* aLittleEndian */ );
 
     try
     {
-      this.filehdr = new FileHeader(this.rfile);
-      if (this.filehdr.hasOptionalHeader())
+      this.filehdr = new FileHeader( this.rfile );
+      if ( this.filehdr.hasOptionalHeader() )
       {
-        this.opthdr = new OptionalHeader(this.rfile);
+        this.opthdr = new OptionalHeader( this.rfile );
       }
     }
     finally
     {
-      if (this.filehdr == null)
+      if ( this.filehdr == null )
       {
         this.rfile.close();
       }
@@ -89,14 +87,14 @@ public class Coff
    */
   public SectionHeader[] getSectionHeaders() throws IOException
   {
-    if (this.scnhdrs == null)
+    if ( this.scnhdrs == null )
     {
       FileHeader header = getFileHeader();
 
       this.scnhdrs = new SectionHeader[header.getSymbolTableEntryCount()];
-      for (int i = 0; i < this.scnhdrs.length; i++)
+      for ( int i = 0; i < this.scnhdrs.length; i++ )
       {
-        this.scnhdrs[i] = new SectionHeader(this.rfile);
+        this.scnhdrs[i] = new SectionHeader( this.rfile );
       }
     }
     return this.scnhdrs;
@@ -108,22 +106,22 @@ public class Coff
    */
   public byte[] getStringTable() throws IOException
   {
-    if (this.string_table == null)
+    if ( this.string_table == null )
     {
       FileHeader header = getFileHeader();
 
       long symbolSize = Symbol.SYMSZ * header.getSymbolTableEntryCount();
       long offset = header.getSymbolTableOffset() + symbolSize;
 
-      this.rfile.seek(offset);
+      this.rfile.seek( offset );
 
       int str_len = this.rfile.readIntE();
-      if ((str_len > 4) && (str_len < this.rfile.length()))
+      if ( ( str_len > 4 ) && ( str_len < this.rfile.length() ) )
       {
         str_len -= 4;
         this.string_table = new byte[str_len];
-        this.rfile.seek(offset + 4);
-        this.rfile.readFully(this.string_table);
+        this.rfile.seek( offset + 4 );
+        this.rfile.readFully( this.string_table );
       }
       else
       {
@@ -139,14 +137,14 @@ public class Coff
    */
   public Symbol[] getSymbols() throws IOException
   {
-    if (this.symbols == null)
+    if ( this.symbols == null )
     {
       long offset = getFileHeader().getSymbolTableOffset();
-      this.rfile.seek(offset);
+      this.rfile.seek( offset );
       this.symbols = new Symbol[getFileHeader().getSymbolTableEntryCount()];
-      for (int i = 0; i < this.symbols.length; i++)
+      for ( int i = 0; i < this.symbols.length; i++ )
       {
-        this.symbols[i] = new Symbol(this.rfile);
+        this.symbols[i] = new Symbol( this.rfile );
       }
     }
     return this.symbols;
@@ -162,12 +160,12 @@ public class Coff
     try
     {
       FileHeader header = getFileHeader();
-      if (header != null)
+      if ( header != null )
       {
-        buffer.append(header);
+        buffer.append( header );
       }
     }
-    catch (IOException e)
+    catch ( IOException e )
     {
       e.printStackTrace();
     }
@@ -175,47 +173,47 @@ public class Coff
     {
       OptionalHeader opt = null;
       opt = getOptionalHeader();
-      if (opt != null)
+      if ( opt != null )
       {
-        buffer.append(opt);
+        buffer.append( opt );
       }
     }
-    catch (IOException e)
+    catch ( IOException e )
     {
       e.printStackTrace();
     }
     try
     {
       SectionHeader[] sections = getSectionHeaders();
-      for (SectionHeader section : sections)
+      for ( SectionHeader section : sections )
       {
-        buffer.append(section);
+        buffer.append( section );
       }
     }
-    catch (IOException e)
+    catch ( IOException e )
     {
     }
 
     try
     {
       Symbol[] table = getSymbols();
-      for (Symbol element : table)
+      for ( Symbol element : table )
       {
-        buffer.append(element.getName(getStringTable())).append('\n');
+        buffer.append( element.getName( getStringTable() ) ).append( '\n' );
       }
     }
-    catch (IOException e)
+    catch ( IOException e )
     {
     }
 
-// try {
-// String[] strings = getStringTable(getStringTable());
-// for (int i = 0; i < strings.length; i++) {
-// buffer.append(strings[i]);
-// }
-// } catch (IOException e) {
-// e.printStackTrace();
-// }
+    // try {
+    // String[] strings = getStringTable(getStringTable());
+    // for (int i = 0; i < strings.length; i++) {
+    // buffer.append(strings[i]);
+    // }
+    // } catch (IOException e) {
+    // e.printStackTrace();
+    // }
     return buffer.toString();
   }
 }

@@ -21,11 +21,9 @@ import java.util.*;
 
 
 /**
- * Used for parsing standard ELF archive (ar) files.
- * 
- * Each object within the archive is represented by an ARHeader class. Each of
- * of these objects can then be turned into an Elf object for performing Elf
- * class operations.
+ * Used for parsing standard ELF archive (ar) files. Each object within the
+ * archive is represented by an ARHeader class. Each of of these objects can
+ * then be turned into an Elf object for performing Elf class operations.
  * 
  * @see AREntry
  */
@@ -33,8 +31,7 @@ public class AR
 {
   // VARIABLES
 
-  private final File file;
-
+  private final String path;
   private RandomAccessFile efile;
   private long stringTableOffset;
   private Collection<AREntry> headers;
@@ -42,8 +39,7 @@ public class AR
   // CONSTRUCTORS
 
   /**
-   * Creates a new <code>AR</code> object from the contents of
-   * the given file.
+   * Creates a new <code>AR</code> object from the contents of the given file.
    * 
    * @param aFile
    *          The AR archive file to process.
@@ -52,26 +48,25 @@ public class AR
    * @throws IOException
    *           if the given file is not a valid AR archive.
    */
-  public AR(final File aFile) throws IOException
+  public AR( final File aFile ) throws IOException
   {
-    if (aFile == null)
+    if ( aFile == null )
     {
-      throw new IllegalArgumentException("Parameter File cannot be null!");
+      throw new IllegalArgumentException( "Parameter File cannot be null!" );
     }
 
-    this.file = aFile;
-
-    this.efile = new RandomAccessFile(aFile, "r");
+    this.path = aFile.getAbsolutePath();
+    this.efile = new RandomAccessFile( aFile, "r" );
 
     final byte[] hdrBytes = new byte[7];
-    this.efile.readFully(hdrBytes);
+    this.efile.readFully( hdrBytes );
 
-    if (!AREntry.isARHeader(hdrBytes))
+    if ( !AREntry.isARHeader( hdrBytes ) )
     {
       this.efile.close();
       this.efile = null;
 
-      throw new IOException("Invalid AR archive! No header found.");
+      throw new IOException( "Invalid AR archive! No header found." );
     }
 
     this.efile.readLine();
@@ -86,13 +81,13 @@ public class AR
   {
     try
     {
-      if (this.efile != null)
+      if ( this.efile != null )
       {
         this.efile.close();
         this.efile = null;
       }
     }
-    catch (final IOException exception)
+    catch ( final IOException exception )
     {
       // Ignored...
     }
@@ -112,24 +107,24 @@ public class AR
    * @throws IOException
    *           in case of I/O problems.
    */
-  public void extractFiles(final File aOutputDir, final String... aNames) throws IOException
+  public void extractFiles( final File aOutputDir, final String... aNames ) throws IOException
   {
-    if (aOutputDir == null)
+    if ( aOutputDir == null )
     {
-      throw new IllegalArgumentException("Parameter OutputDir cannot be null!");
+      throw new IllegalArgumentException( "Parameter OutputDir cannot be null!" );
     }
 
-    for (final AREntry header : getEntries())
+    for ( final AREntry header : getEntries() )
     {
       String fileName = header.getFileName();
-      if ((aNames != null) && !stringInStrings(aNames, fileName))
+      if ( ( aNames != null ) && !stringInStrings( aNames, fileName ) )
       {
         continue;
       }
 
-      this.efile.seek(header.getFileOffset());
+      this.efile.seek( header.getFileOffset() );
 
-      extractFile(header, new File(aOutputDir, fileName));
+      extractFile( header, new File( aOutputDir, fileName ) );
     }
   }
 
@@ -140,7 +135,7 @@ public class AR
    */
   public String getArchiveName()
   {
-    return this.file.getName();
+    return this.path;
   }
 
   /**
@@ -153,11 +148,11 @@ public class AR
    */
   public Collection<AREntry> getEntries() throws IOException
   {
-    if (this.headers == null)
+    if ( this.headers == null )
     {
       this.headers = loadEntries();
     }
-    return Collections.unmodifiableCollection(this.headers);
+    return Collections.unmodifiableCollection( this.headers );
   }
 
   /**
@@ -171,13 +166,13 @@ public class AR
   {
     Collection<AREntry> entries = getEntries();
 
-    List<String> result = new ArrayList<String>(entries.size());
-    for (AREntry entry : entries)
+    List<String> result = new ArrayList<String>( entries.size() );
+    for ( AREntry entry : entries )
     {
-      result.add(entry.getFileName());
+      result.add( entry.getFileName() );
     }
 
-    return Collections.unmodifiableCollection(result);
+    return Collections.unmodifiableCollection( result );
   }
 
   /**
@@ -195,25 +190,25 @@ public class AR
    * @throws IOException
    *           in case of I/O problems.
    */
-  public boolean readFile(final Writer aWriter, final String aName) throws IOException
+  public boolean readFile( final Writer aWriter, final String aName ) throws IOException
   {
-    if (aWriter == null)
+    if ( aWriter == null )
     {
-      throw new IllegalArgumentException("Parameter Writer cannot be null!");
+      throw new IllegalArgumentException( "Parameter Writer cannot be null!" );
     }
-    if (aName == null)
+    if ( aName == null )
     {
-      throw new IllegalArgumentException("Parameter Name cannot be null!");
+      throw new IllegalArgumentException( "Parameter Name cannot be null!" );
     }
 
-    for (final AREntry header : getEntries())
+    for ( final AREntry header : getEntries() )
     {
       String name = header.getFileName();
-      if (aName.equals(name))
+      if ( aName.equals( name ) )
       {
-        this.efile.seek(header.getFileOffset());
+        this.efile.seek( header.getFileOffset() );
 
-        extractFile(header, aWriter);
+        extractFile( header, aWriter );
         return true;
       }
     }
@@ -222,21 +217,19 @@ public class AR
   }
 
   /**
-   * Look up the name stored in the archive's string table based
-   * on the offset given.
-   * 
-   * Maintains <code>efile</code> file location.
+   * Look up the name stored in the archive's string table based on the offset
+   * given. Maintains <code>efile</code> file location.
    * 
    * @param aOffset
    *          Offset into the string table for first character of the name.
    * @throws IOException
    *           <code>offset</code> not in string table bounds.
    */
-  final String nameFromStringTable(final long aOffset) throws IOException
+  final String nameFromStringTable( final long aOffset ) throws IOException
   {
-    if (this.stringTableOffset < 0)
+    if ( this.stringTableOffset < 0 )
     {
-      throw new IOException("Invalid AR archive! No string table read yet?!");
+      throw new IOException( "Invalid AR archive! No string table read yet?!" );
     }
 
     final StringBuilder name = new StringBuilder();
@@ -245,17 +238,17 @@ public class AR
 
     try
     {
-      this.efile.seek(this.stringTableOffset + aOffset);
+      this.efile.seek( this.stringTableOffset + aOffset );
 
       byte temp;
-      while ((temp = this.efile.readByte()) != '\n')
+      while ( ( temp = this.efile.readByte() ) != '\n' )
       {
-        name.append((char) temp);
+        name.append( ( char )temp );
       }
     }
     finally
     {
-      this.efile.seek(originalPos);
+      this.efile.seek( originalPos );
     }
 
     return name.toString();
@@ -287,13 +280,13 @@ public class AR
    * @throws IOException
    *           in case of I/O problems.
    */
-  private void extractFile(final AREntry aEntry, final File aFile) throws IOException
+  private void extractFile( final AREntry aEntry, final File aFile ) throws IOException
   {
-    final FileWriter fw = new FileWriter(aFile);
+    final FileWriter fw = new FileWriter( aFile );
 
     try
     {
-      extractFile(aEntry, fw);
+      extractFile( aEntry, fw );
     }
     finally
     {
@@ -301,7 +294,7 @@ public class AR
       {
         fw.close();
       }
-      catch (final IOException exception)
+      catch ( final IOException exception )
       {
         // Ignore...
       }
@@ -318,21 +311,21 @@ public class AR
    * @throws IOException
    *           in case of I/O problems.
    */
-  private void extractFile(final AREntry aEntry, final Writer aWriter) throws IOException
+  private void extractFile( final AREntry aEntry, final Writer aWriter ) throws IOException
   {
     try
     {
       long bytesToRead = aEntry.getSize();
 
-      while (bytesToRead > 0)
+      while ( bytesToRead > 0 )
       {
         final int byteRead = this.efile.read();
-        if ((byteRead < 0) && (bytesToRead != 0))
+        if ( ( byteRead < 0 ) && ( bytesToRead != 0 ) )
         {
-          throw new IOException("Invalid AR archive! Premature end of archive?!");
+          throw new IOException( "Invalid AR archive! Premature end of archive?!" );
         }
 
-        aWriter.write(byteRead);
+        aWriter.write( byteRead );
         bytesToRead--;
       }
     }
@@ -342,7 +335,7 @@ public class AR
       {
         aWriter.flush();
       }
-      catch (final IOException exception)
+      catch ( final IOException exception )
       {
         // Ignore...
       }
@@ -359,29 +352,29 @@ public class AR
     final List<AREntry> headers = new ArrayList<AREntry>();
 
     // Check for EOF condition
-    while (this.efile.getFilePointer() < this.efile.length())
+    while ( this.efile.getFilePointer() < this.efile.length() )
     {
-      final AREntry header = AREntry.create(this, this.efile);
+      final AREntry header = AREntry.create( this, this.efile );
 
-      if (!header.isSpecial())
+      if ( !header.isSpecial() )
       {
-        headers.add(header);
+        headers.add( header );
       }
 
       long pos = this.efile.getFilePointer();
-      if (header.isStringTableSection())
+      if ( header.isStringTableSection() )
       {
         this.stringTableOffset = pos;
       }
 
       // Compute the location of the next header in the archive.
       pos += header.getSize();
-      if ((pos % 2) != 0)
+      if ( ( pos % 2 ) != 0 )
       {
         pos++;
       }
 
-      this.efile.seek(pos);
+      this.efile.seek( pos );
     }
 
     return headers;
@@ -397,11 +390,11 @@ public class AR
    * @return <code>true</code> if the given subject was found in the given set,
    *         <code>false</code> otherwise.
    */
-  private boolean stringInStrings(final String[] aSet, final String aSubject)
+  private boolean stringInStrings( final String[] aSet, final String aSubject )
   {
-    for (final String element : aSet)
+    for ( final String element : aSet )
     {
-      if (aSubject.equals(element))
+      if ( aSubject.equals( element ) )
       {
         return true;
       }

@@ -11,7 +11,7 @@
  *     QNX Software Systems - Initial API and implementation
  *     J.W. Janssen - Clean up and made API more OO-oriented
  *******************************************************************************/
-package nl.lxtreme.binutils.elf;
+package nl.lxtreme.binutils.coff;
 
 
 import java.io.*;

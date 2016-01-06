@@ -16,8 +16,6 @@ package nl.lxtreme.binutils.coff;
 
 import java.io.*;
 
-import nl.lxtreme.binutils.elf.*;
-
 
 /**
  * 
@@ -47,9 +45,9 @@ public class OptionalHeader
    * @param aFile
    * @throws IOException
    */
-  OptionalHeader(ERandomAccessFile aFile) throws IOException
+  OptionalHeader( ERandomAccessFile aFile ) throws IOException
   {
-    aFile.seek(aFile.getFilePointer() + FileHeader.FILHSZ);
+    aFile.seek( aFile.getFilePointer() + FileHeader.FILHSZ );
 
     this.magic = aFile.readShortE();
     this.vstamp = aFile.readShortE();
@@ -150,15 +148,15 @@ public class OptionalHeader
   public String toString()
   {
     StringBuffer buffer = new StringBuffer();
-    buffer.append("OPTIONAL HEADER VALUES").append('\n');
-    buffer.append("magic      = ").append(this.magic).append('\n');
-    buffer.append("vstamp     = ").append(this.vstamp).append('\n');
-    buffer.append("tsize      = ").append(this.tsize).append('\n');
-    buffer.append("dsize      = ").append(this.dsize).append('\n');
-    buffer.append("bsize      = ").append(this.bsize).append('\n');
-    buffer.append("entry      = ").append(this.entry).append('\n');
-    buffer.append("text_start = ").append(this.text_start).append('\n');
-    buffer.append("data_start = ").append(this.data_start).append('\n');
+    buffer.append( "OPTIONAL HEADER VALUES" ).append( '\n' );
+    buffer.append( "magic      = " ).append( this.magic ).append( '\n' );
+    buffer.append( "vstamp     = " ).append( this.vstamp ).append( '\n' );
+    buffer.append( "tsize      = " ).append( this.tsize ).append( '\n' );
+    buffer.append( "dsize      = " ).append( this.dsize ).append( '\n' );
+    buffer.append( "bsize      = " ).append( this.bsize ).append( '\n' );
+    buffer.append( "entry      = " ).append( this.entry ).append( '\n' );
+    buffer.append( "text_start = " ).append( this.text_start ).append( '\n' );
+    buffer.append( "data_start = " ).append( this.data_start ).append( '\n' );
     return buffer.toString();
   }
 }

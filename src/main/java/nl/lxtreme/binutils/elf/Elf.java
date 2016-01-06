@@ -1,531 +1,402 @@
-/*******************************************************************************
- * Copyright (c) 2011 - J.W. Janssen
- * 
- * Copyright (c) 2000, 2008 QNX Software Systems and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     QNX Software Systems - Initial API and implementation
- *     Markus Schorn (Wind River Systems)
- *     J.W. Janssen - Clean up and made API more OO-oriented
- *******************************************************************************/
+ * (C) Copyright 2016 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2. 
+ */
 package nl.lxtreme.binutils.elf;
 
-
 import java.io.*;
-import java.math.*;
+import java.nio.*;
+import java.nio.channels.*;
+import java.nio.file.*;
 import java.util.*;
 
+import nl.lxtreme.binutils.elf.DynamicEntry.*;
 
 /**
- * Denotes an ELF (Executable and Linking Format) file.
+ * Represents an ELF object file.
  * <p>
- * There are three main types of object files:
- * </p>
- * <ul>
- * <li>A relocatable file holds code and data suitable for linking with other
- * object files to create an executable or a shared object file;</li>
- * <li>An executable file holds a program suitable for execution;</li>
- * <li>A shared object file holds code and data suitable for linking in two
- * contexts. First, the link editor may process it with other relocatable and
- * shared object files to create another object file. Second, the dynamic linker
- * combines it with an executable file and other shared objects to create a
- * process image.</li>
- * </ul>
- * <p>
- * Created by the assembler and link editor, object files are binary
- * representations of programs intended to execute directly on a processor.
- * Programs that require other abstract machines are excluded.
+ * This class is <b>not</b> thread-safe!
  * </p>
  */
-public class Elf
-{
-  // CONSTANTS
-
-  public final static int ELF32_ADDR_SIZE = 4;
-  public final static int ELF32_OFF_SIZE = 4;
-  public final static int ELF64_ADDR_SIZE = 8;
-  public final static int ELF64_OFF_SIZE = 8;
-
-  // VARIABLES
-
-  private ERandomAccessFile efile;
-  private ElfHeader ehdr;
-  private Section[] sections;
-  private String file;
-  private byte[] section_strtab;
-  private int syms = 0;
-  private Symbol[] symbols;
-  private Symbol[] symtab_symbols;
-  private Section symtab_sym;
-  private Symbol[] dynsym_symbols;
-  private Section dynsym_sym;
-
-  // CONSTRUCTORS
-
-  /**
-   * @param aFile
-   * @throws IOException
-   */
-  public Elf( final File aFile ) throws IOException
-  {
-    try
-    {
-      this.efile = new ERandomAccessFile( aFile, "r" );
-      this.ehdr = new ElfHeader( this.efile );
-      this.file = aFile.getName();
-    }
-    finally
-    {
-      if ( this.ehdr == null )
-      {
-        dispose();
-      }
-    }
-  }
-
-  /**
-   * A hollow entry, to be used with caution in controlled situations
-   */
-  private Elf()
-  {
-  }
-
-  // METHODS
-
-  /**
-   * @param array
-   * @return
-   * @throws IOException
-   */
-  public static Attribute getAttributes( final byte[] array ) throws IOException
-  {
-    final Elf emptyElf = new Elf();
-    emptyElf.ehdr = new ElfHeader( array );
-    emptyElf.sections = new Section[0];
-    final Attribute attrib = emptyElf.getAttributes();
-    emptyElf.dispose();
-
-    return attrib;
-  }
-
-  /**
-   * @param file
-   * @return
-   * @throws IOException
-   */
-  public static Attribute getAttributes( final File file ) throws IOException
-  {
-    final Elf elf = new Elf( file );
-    final Attribute attrib = elf.getAttributes();
-    elf.dispose();
-    return attrib;
-  }
-
-  /**
-   * @param aBytes
-   * @return
-   */
-  static long createAddr32( final byte[] aBytes )
-  {
-    final long result = new BigInteger( 1, aBytes ).longValue();
-    return result & 0xFFFFFFFF;
-  }
-
-  /**
-   * @param aBytes
-   * @return
-   */
-  static long createAddr64( final byte[] aBytes )
-  {
-    return new BigInteger( 1, aBytes ).longValue();
-  }
-
-  /**
-   * @param file
-   * @return
-   * @throws IOException
-   */
-  static long readUnsignedLong( final ERandomAccessFile file ) throws IOException
-  {
-    final long result = file.readLongE();
-    if ( result < 0 )
-    {
-      throw new IOException( "Maximal file offset is " + Long.toHexString( Long.MAX_VALUE ) + " given offset is "
-          + Long.toHexString( result ) );
-    }
-    return result;
-  }
-
-  /**
-   * Disposes this ELF object and closes all associated resources.
-   */
-  public void dispose()
-  {
-    try
-    {
-      if ( this.efile != null )
-      {
-        this.efile.close();
-        this.efile = null;
-      }
-    }
-    catch ( IOException exception )
-    {
-      // Ignore XXX
-    }
-  }
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public Attribute getAttributes() throws IOException
-  {
-    return Attribute.create( this.ehdr, getSections() );
-  }
-
-  /**
-   * @param section
-   * @return
-   * @throws IOException
-   */
-  public Dynamic[] getDynamicSections( final Section section ) throws IOException
-  {
-    return Dynamic.create( this.ehdr, section, this.efile );
-  }
-
-  /**
-   * @return
-   */
-  public Symbol[] getDynamicSymbols()
-  {
-    if ( this.dynsym_symbols == null )
-    {
-      throw new IllegalStateException( "Dynamic symbols not yet loaded!" );
-    }
-    return this.dynsym_symbols;
-  }
-
-  /**
-   * @return
-   */
-  public String getFilename()
-  {
-    return this.file;
-  }
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public ElfHeader getHeader() throws IOException
-  {
-    return this.ehdr;
-  }
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public ProgramHeader[] getProgramHeaders() throws IOException
-  {
-    return ProgramHeader.createHeaders( this.ehdr, this.efile );
-  }
-
-  /**
-   * @param name
-   * @return
-   * @throws IOException
-   */
-  public Section getSectionByName( final String name ) throws IOException
-  {
-    final Section[] secs = getSections();
-    for ( Section section : secs )
-    {
-      if ( name.equals( section.getName() ) )
-      {
-        return section;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public Section[] getSections() throws IOException
-  {
-    if ( this.sections == null )
-    {
-      this.sections = Section.create( this, this.ehdr, this.efile );
-      for ( int i = 0; i < this.sections.length; i++ )
-      {
-        if ( this.sections[i].getType() == Section.SHT_SYMTAB )
-        {
-          this.syms = i;
+public class Elf implements Closeable {
+    static int expectByteInRange(int in, int lowInclusive, int highInclusive, String errMsg) throws IOException {
+        if (in < lowInclusive || in > highInclusive) {
+            throw new IOException(errMsg);
         }
-        if ( ( this.syms == 0 ) && ( this.sections[i].getType() == Section.SHT_DYNSYM ) )
-        {
-          this.syms = i;
+        return in;
+    }
+
+    static String getZString(byte[] buf, long offset) {
+        return getZString(buf, (int) (offset & 0xFFFFFFFF));
+    }
+
+    static String getZString(byte[] buf, int offset) {
+        int end = offset;
+        while (end < buf.length && buf[end] != 0) {
+            end++;
         }
-      }
-    }
-    return this.sections;
-  }
-
-  /**
-   * @param type
-   * @return
-   * @throws IOException
-   */
-  public Section[] getSections( final int type ) throws IOException
-  {
-    final ArrayList<Section> result = new ArrayList<Section>();
-
-    final Section[] secs = getSections();
-    for ( Section section : secs )
-    {
-      if ( type == section.getType() )
-      {
-        result.add( section );
-      }
+        return new String(buf, offset, (end - offset));
     }
 
-    return result.toArray( new Section[result.size()] );
-  }
-
-  /**
-   * This section describes the default string table. String table sections hold
-   * null-terminated character sequences, commonly called strings. The object
-   * file uses these strings to represent symbol and section names.
-   * 
-   * @return the raw string table, never <code>null</code>.
-   * @throws IOException
-   *           in case of I/O problems.
-   */
-  public byte[] getStringTable() throws IOException
-  {
-    if ( this.section_strtab == null )
-    {
-      final int shstrndx = this.ehdr.getStringTableSectionIndex();
-      if ( ( shstrndx > this.sections.length ) || ( shstrndx < 0 ) )
-      {
-        this.section_strtab = new byte[0];
-      }
-
-      final int size = ( int )this.sections[shstrndx].getSize();
-      if ( ( size <= 0 ) || ( size > this.efile.length() ) )
-      {
-        this.section_strtab = new byte[0];
-      }
-      this.section_strtab = new byte[size];
-      this.efile.seek( this.sections[shstrndx].getFileOffset() );
-      this.efile.read( this.section_strtab );
-    }
-    return this.section_strtab;
-  }
-
-  /**
-   * /* return the address of the function that address is in
-   * 
-   * @param vma
-   * @return
-   */
-  public Symbol getSymbol( final long vma )
-  {
-    if ( this.symbols == null )
-    {
-      return null;
+    static boolean isBitSet(int flags, int mask) {
+        return (flags & mask) == mask;
     }
 
-    // @@@ If this works, move it to a single instance in this class.
-    final SymbolComparator symbol_comparator = new SymbolComparator();
-
-    int ndx = Arrays.binarySearch( this.symbols, vma, symbol_comparator );
-    if ( ndx > 0 )
-    {
-      return this.symbols[ndx];
-    }
-    if ( ndx == -1 )
-    {
-      return null;
-    }
-    ndx = -ndx - 1;
-    return this.symbols[ndx - 1];
-  }
-
-  /**
-   * @return
-   */
-  public Symbol[] getSymbols()
-  {
-    return this.symbols;
-  }
-
-  /**
-   * @return
-   */
-  public Symbol[] getSymtabSymbols()
-  {
-    return this.symtab_symbols;
-  }
-
-  /**
-   * Loads the symbol tables.
-   * 
-   * @throws IOException
-   *           in case of I/O problems.
-   */
-  public void loadSymbols() throws IOException
-  {
-    if ( this.symbols == null )
-    {
-      Section section[] = getSections( Section.SHT_SYMTAB );
-
-      this.symtab_sym = null;
-      if ( section.length > 0 )
-      {
-        this.symtab_sym = section[0];
-      }
-      this.symtab_symbols = loadSymbolsBySection( this.symtab_sym );
-
-      section = getSections( Section.SHT_DYNSYM );
-
-      this.dynsym_sym = null;
-      if ( section.length > 0 )
-      {
-        this.dynsym_sym = section[0];
-      }
-      this.dynsym_symbols = loadSymbolsBySection( this.dynsym_sym );
-
-      if ( this.symtab_sym != null )
-      {
-        // sym = symtab_sym;
-        this.symbols = this.symtab_symbols;
-      }
-      else if ( this.dynsym_sym != null )
-      {
-        // sym = dynsym_sym;
-        this.symbols = this.dynsym_symbols;
-      }
-    }
-  }
-
-  /**
-   * Reads the program segment from the ELF file and writes it to the given
-   * writer.
-   * 
-   * @param aHeader
-   *          the program segment to read;
-   * @param aWriter
-   *          the writer to write the read data to.
-   * @throws IOException
-   *           in case of I/O problems.
-   */
-  public void readSegment( ProgramHeader aHeader, OutputStream aWriter ) throws IOException
-  {
-    this.efile.seek( aHeader.getFileOffset() );
-
-    this.efile.setEndiannes( this.ehdr.isLittleEndian() );
-
-    long size = aHeader.getFileSize();
-    if ( this.ehdr.is32bit() )
-    {
-      size /= 4;
-    }
-    else if ( this.ehdr.is64bit() )
-    {
-      size /= 8;
+    static boolean isBitSet(long flags, long mask) {
+        return (flags & mask) == mask;
     }
 
-    while ( size-- >= 0 )
-    {
-      if ( this.ehdr.is32bit() )
-      {
-        byte[] buf = new byte[4];
-        this.efile.readFullyE( buf );
-        aWriter.write( buf, 0, 4 );
-      }
-      else
-      {
-        byte[] buf = new byte[8];
-        this.efile.readFullyE( buf );
-        aWriter.write( buf, 0, 8 );
-      }
-    }
-  }
-
-  /**
-   * @param section
-   * @param index
-   * @return
-   * @throws IOException
-   */
-  final String getStringFromSection( final Section section, final int index ) throws IOException
-  {
-    if ( index > section.getSize() )
-    {
-      return "";
-    }
-
-    final StringBuffer str = new StringBuffer();
-    // Most string symbols will be less than 50 bytes in size
-    final byte[] tmp = new byte[50];
-
-    this.efile.seek( section.getFileOffset() + index );
-    while ( true )
-    {
-      int len = this.efile.read( tmp );
-      for ( int i = 0; i < len; i++ )
-      {
-        if ( tmp[i] == 0 )
-        {
-          len = 0;
-          break;
+    static void readFully(ReadableByteChannel ch, ByteBuffer buf, String errMsg) throws IOException {
+        buf.rewind();
+        int read = ch.read(buf);
+        if (read != buf.limit()) {
+            throw new IOException(errMsg + " Read only " + read + " of " + buf.limit() + " bytes!");
         }
-        str.append( ( char )tmp[i] );
-      }
-      if ( len <= 0 )
-      {
-        break;
-      }
+        buf.flip();
     }
 
-    return str.toString();
-  }
+    public final Header header;
 
-  /**
-   * Make sure we do not leak the fds.
-   */
-  @Override
-  protected void finalize() throws Throwable
-  {
-    try
-    {
-      dispose();
-    }
-    finally
-    {
-      super.finalize();
-    }
-  }
+    public final ProgramHeader[] programHeaders;
 
-  /**
-   * @param aSection
-   * @return
-   * @throws IOException
-   */
-  private Symbol[] loadSymbolsBySection( final Section aSection ) throws IOException
-  {
-    if ( aSection == null )
-    {
-      return new Symbol[0];
+    public final SectionHeader[] sectionHeaders;
+
+    public final DynamicEntry[] dynamicTable;
+
+    // locally managed.
+    private FileChannel channel;
+
+    public Elf(File file) throws IOException {
+        this(FileChannel.open(file.toPath(), StandardOpenOption.READ));
     }
-    return aSection.loadSymbols( this.ehdr, this.efile );
-  }
+
+    public Elf(FileChannel channel) throws IOException {
+        this.channel = channel;
+        this.header = new Header(channel);
+
+        // Read the last part of the ELF header and interpret the various headers...
+        ByteBuffer buf = ByteBuffer.allocate(65536);
+        buf.order(header.elfByteOrder);
+        buf.limit(10);
+
+        readFully(channel, buf, "Unable to read entry information!");
+
+        int programHeaderEntrySize = buf.getShort();
+        int programHeaderEntryCount = buf.getShort();
+        int sectionHeaderEntrySize = buf.getShort();
+        int sectionHeaderEntryCount = buf.getShort();
+        int sectionNameTableIndex = buf.getShort();
+
+        // Should not be necessary unless we've not read the entire header...
+        channel.position(header.programHeaderOffset);
+
+        // Prepare for reading the program headers...
+        buf.limit(programHeaderEntrySize);
+
+        this.programHeaders = new ProgramHeader[programHeaderEntryCount];
+        for (int i = 0; i < programHeaderEntryCount; i++) {
+            readFully(channel, buf, "Unable to read program header entry #" + i);
+
+            this.programHeaders[i] = new ProgramHeader(header.elfClass, buf);
+        }
+
+        // Should not be necessary unless we've not read the entire header...
+        channel.position(header.sectionHeaderOffset);
+
+        // Prepare for reading the section headers...
+        buf.limit(sectionHeaderEntrySize);
+
+        this.sectionHeaders = new SectionHeader[sectionHeaderEntryCount - 1];
+        for (int i = 0; i < sectionHeaderEntryCount; i++) {
+            readFully(channel, buf, "Unable to read section header entry #" + i);
+
+            SectionHeader sHdr = new SectionHeader(header.elfClass, buf);
+            if (i == 0) {
+                // Should always be a SHT_NONE entry...
+                if (sHdr.type != SectionType.NULL) {
+                    throw new IOException("Invalid section found! First section should always be of type SHT_NULL!");
+                }
+            } else {
+                this.sectionHeaders[i - 1] = sHdr;
+            }
+        }
+
+        if (sectionNameTableIndex != 0) {
+            // There's a section name string table present...
+            SectionHeader shdr = this.sectionHeaders[sectionNameTableIndex - 1];
+
+            buf = getSection(shdr);
+            if (buf == null) {
+                throw new IOException("Unable to get section name table!");
+            }
+
+            for (SectionHeader hdr : sectionHeaders) {
+                hdr.setName(buf);
+            }
+        }
+
+        ProgramHeader phdr = getProgramHeaderByType(SegmentType.DYNAMIC);
+        if (phdr != null) {
+            List<DynamicEntry> entries = new ArrayList<>();
+
+            buf = getSegment(phdr);
+            if (buf == null) {
+                throw new IOException("Unable to get dynamic segment!");
+            }
+
+            // Walk through the entries...
+            final boolean is32bit = header.is32bit();
+            while (buf.remaining() > 0) {
+                long tagValue = is32bit ? buf.getInt() : buf.getLong();
+                long value = is32bit ? buf.getInt() : buf.getLong();
+                if (tagValue == 0) {
+                    break;
+                }
+                Tag tag = Tag.valueOf((int) tagValue);
+
+                entries.add(new DynamicEntry(tag, value));
+            }
+
+            dynamicTable = entries.toArray(new DynamicEntry[entries.size()]);
+        } else {
+            dynamicTable = null;
+        }
+    }
+
+    public Elf(String name) throws IOException {
+        this(new File(name));
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (channel != null) {
+            channel.close();
+            channel = null;
+        }
+    }
+
+    protected StringBuilder dumpDynamicEntry(StringBuilder sb, DynamicEntry entry, byte[] stringTable) {
+        sb.append(entry.getTag());
+        sb.append(" => ");
+        if (entry.isStringOffset()) {
+            sb.append(getZString(stringTable, entry.getValue()));
+        } else {
+            sb.append("0x").append(Long.toHexString(entry.getValue()));
+        }
+        return sb;
+    }
+
+    protected StringBuilder dumpProgramHeader(StringBuilder sb, ProgramHeader phdr) {
+        sb.append(phdr.type);
+        sb.append(", offset: 0x").append(Long.toHexString(phdr.offset));
+        sb.append(", vaddr: 0x").append(Long.toHexString(phdr.virtualAddress));
+        sb.append(", paddr: 0x").append(Long.toHexString(phdr.physicalAddress));
+        sb.append(", align: 0x").append(Long.toHexString(phdr.segmentAlignment));
+        sb.append(", file size: 0x").append(Long.toHexString(phdr.segmentFileSize));
+        sb.append(", memory size: 0x").append(Long.toHexString(phdr.segmentMemorySize));
+        sb.append(", flags: ");
+        if (isBitSet(phdr.flags, 0x04)) {
+            sb.append("r");
+        } else {
+            sb.append("-");
+        }
+        if (isBitSet(phdr.flags, 0x02)) {
+            sb.append("w");
+        } else {
+            sb.append("-");
+        }
+        if (isBitSet(phdr.flags, 0x01)) {
+            sb.append("x");
+        } else {
+            sb.append("-");
+        }
+        return sb;
+    }
+
+    protected StringBuilder dumpSectionHeader(StringBuilder sb, SectionHeader shdr) {
+        String name = shdr.getName();
+        if (name != null) {
+            sb.append(name);
+        } else {
+            sb.append(shdr.type);
+        }
+        sb.append(", size: 0x").append(Long.toHexString(shdr.size));
+        sb.append(", vaddr: 0x").append(Long.toHexString(shdr.virtualAddress));
+        sb.append(", foffs: 0x").append(Long.toHexString(shdr.fileOffset));
+        sb.append(", align: 0x").append(Long.toHexString(shdr.sectionAlignment));
+        if (shdr.link != 0) {
+            sb.append(", link: 0x").append(Long.toHexString(shdr.link));
+        }
+        if (shdr.info != 0) {
+            sb.append(", info: 0x").append(Long.toHexString(shdr.info));
+        }
+        if (shdr.entrySize != 0) {
+            sb.append(", entrySize: 0x").append(Long.toHexString(shdr.entrySize));
+        }
+        return sb;
+    }
+
+    protected byte[] getDynamicStringTable() throws IOException {
+        SectionHeader dynStrHdr = getSectionHeaderByType(SectionType.STRTAB);
+        if (dynStrHdr == null) {
+            throw new IOException("Unable to get string table for dynamic section!");
+        }
+
+        ByteBuffer dynStr = getSection(dynStrHdr);
+        if (dynStr == null) {
+            throw new IOException("Unable to get string table for dynamic section!");
+        }
+
+        return dynStr.array();
+    }
+
+    /**
+     * Returns the first program header with the given type.
+     * 
+     * @return the first program header with the given type, or <code>null</code> if no such segment exists in this ELF object.
+     */
+    public ProgramHeader getProgramHeaderByType(SegmentType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("Type cannot be null!");
+        }
+        for (ProgramHeader hdr : programHeaders) {
+            if (type.equals(hdr.type)) {
+                return hdr;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Convenience method for determining which interpreter should be used for this ELF object.
+     * 
+     * @return the name of the interpreter, or <code>null</code> if no interpreter could be determined.
+     */
+    public String getProgramInterpreter() throws IOException {
+        ProgramHeader phdr = getProgramHeaderByType(SegmentType.INTERP);
+        if (phdr == null) {
+            return null;
+        }
+
+        ByteBuffer buf = getSegment(phdr);
+        if (buf == null) {
+            throw new IOException("Unable to get program interpreter segment?!");
+        }
+
+        return new String(buf.array(), 0, buf.remaining());
+    }
+
+    /**
+     * Returns the actual section data based on the information from the given header.
+     * 
+     * @return a channel from which the section data can be read, never <code>null</code>.
+     *         The returned channel ignores the close operation.
+     */
+    public ByteBuffer getSection(final SectionHeader shdr) throws IOException {
+        if (shdr == null) {
+            throw new IllegalArgumentException("Header cannot be null!");
+        }
+        if (channel == null) {
+            throw new IOException("ELF file is already closed!");
+        }
+
+        ByteBuffer buf = ByteBuffer.allocate((int) shdr.size);
+        buf.order(header.elfByteOrder);
+
+        channel.position(shdr.fileOffset);
+        readFully(channel, buf, "Unable to read section completely!");
+
+        return buf;
+    }
+
+    /**
+     * Returns the first section header with the given type.
+     * 
+     * @return the first section header with the given type, or <code>null</code> if no such section exists in this ELF object.
+     */
+    public SectionHeader getSectionHeaderByType(SectionType type) {
+        if (type == null) {
+            throw new IllegalArgumentException("Type cannot be null!");
+        }
+        for (SectionHeader hdr : sectionHeaders) {
+            if (type.equals(hdr.type)) {
+                return hdr;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the actual segment data based on the information from the given header.
+     * 
+     * @return a {@link ByteBuffer} from which the segment data can be read, never <code>null</code>.
+     */
+    public ByteBuffer getSegment(final ProgramHeader phdr) throws IOException {
+        if (phdr == null) {
+            throw new IllegalArgumentException("Header cannot be null!");
+        }
+        if (channel == null) {
+            throw new IOException("ELF file is already closed!");
+        }
+
+        ByteBuffer buf = ByteBuffer.allocate((int) phdr.segmentFileSize);
+        buf.order(header.elfByteOrder);
+
+        channel.position(phdr.offset);
+        readFully(channel, buf, "Unable to read segment completely!");
+
+        return buf;
+    }
+
+    public List<String> getSharedDependencies() throws IOException {
+        byte[] array = getDynamicStringTable();
+
+        List<String> result = new ArrayList<>();
+        for (DynamicEntry entry : dynamicTable) {
+            if (Tag.NEEDED.equals(entry.getTag())) {
+                result.add(getZString(array, (int) entry.getValue()));
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append(header).append('\n');
+            sb.append("Program header:\n");
+            for (int i = 0; i < programHeaders.length; i++) {
+                sb.append('\t');
+                dumpProgramHeader(sb, programHeaders[i]);
+                sb.append('\n');
+            }
+            
+            byte[] strTable = getDynamicStringTable();
+
+            sb.append("Dynamic table:\n");
+            for (DynamicEntry entry : dynamicTable) {
+                sb.append('\t');
+                dumpDynamicEntry(sb, entry, strTable);
+                sb.append('\n');
+            }
+
+            sb.append("Sections:\n");
+            for (int i = 0; i < sectionHeaders.length; i++) {
+                SectionHeader shdr = sectionHeaders[i];
+                if (!SectionType.STRTAB.equals(shdr.type)) {
+                    sb.append('\t');
+                    dumpSectionHeader(sb, sectionHeaders[i]);
+                    sb.append('\n');
+                }
+            }
+            return sb.toString();
+        } catch (IOException exception) {
+            throw new RuntimeException("Unable to get dynamic string table!");
+        }
+    }
 }

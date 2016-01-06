@@ -16,8 +16,6 @@ package nl.lxtreme.binutils.coff;
 
 import java.io.*;
 
-import nl.lxtreme.binutils.elf.*;
-
 
 /**
  * 

@@ -81,7 +81,9 @@ public class Symbol
    * SYMNMLEN.
    */
   private final byte[] _n_name = new byte[SYMNMLEN];
-  /** long. Symbol's value: dependent on section number, storage class and type. */
+  /**
+   * long. Symbol's value: dependent on section number, storage class and type.
+   */
   private int n_value;
   /** short, Section number. */
   private final short n_scnum;
@@ -100,9 +102,9 @@ public class Symbol
    * @param file
    * @throws IOException
    */
-  protected Symbol(RandomAccessFile file) throws IOException
+  protected Symbol( RandomAccessFile file ) throws IOException
   {
-    file.readFully(this._n_name);
+    file.readFully( this._n_name );
     this.n_value = file.readInt();
     this.n_scnum = file.readShort();
     this.n_type = file.readUnsignedShort();
@@ -126,39 +128,39 @@ public class Symbol
   public String getName()
   {
     // For a long name, _n_name[0] == 0 and this would just return empty string.
-    for (int i = 0; i < this._n_name.length; i++)
+    for ( int i = 0; i < this._n_name.length; i++ )
     {
-      if (this._n_name[i] == 0)
+      if ( this._n_name[i] == 0 )
       {
-        return new String(this._n_name, 0, i);
+        return new String( this._n_name, 0, i );
       }
     }
     // all eight bytes are filled
-    return new String(this._n_name);
+    return new String( this._n_name );
   }
 
   /**
    * @param aTable
    * @return
    */
-  public String getName(byte[] aTable)
+  public String getName( byte[] aTable )
   {
-    if ((aTable.length > 0) && isLongName())
+    if ( ( aTable.length > 0 ) && isLongName() )
     {
       // The first four bytes of the string table represent the
       // number of bytes in the string table.
-      int offset = (((this._n_name[8] & 0xff) << 24) //
-          | ((this._n_name[7] & 0xff) << 16) //
-          | ((this._n_name[6] & 0xff) << 8) //
-      | (this._n_name[5] & 0xff)) - 4;
+      int offset = ( ( ( this._n_name[8] & 0xff ) << 24 ) //
+          | ( ( this._n_name[7] & 0xff ) << 16 ) //
+          | ( ( this._n_name[6] & 0xff ) << 8 ) //
+          | ( this._n_name[5] & 0xff ) ) - 4;
 
-      if (offset > 0)
+      if ( offset > 0 )
       {
-        for (int i = offset; i < aTable.length; i++)
+        for ( int i = offset; i < aTable.length; i++ )
         {
-          if (aTable[i] == 0)
+          if ( aTable[i] == 0 )
           {
-            return new String(aTable, offset, i - offset);
+            return new String( aTable, offset, i - offset );
           }
         }
       }
@@ -205,7 +207,7 @@ public class Symbol
    */
   public boolean isArray()
   {
-    return (this.n_type & N_TMASK) == (DT_ARY << N_BTSHFT);
+    return ( this.n_type & N_TMASK ) == ( DT_ARY << N_BTSHFT );
   }
 
   /**
@@ -213,7 +215,7 @@ public class Symbol
    */
   public boolean isFunction()
   {
-    return (this.n_type & N_TMASK) == (DT_FCN << N_BTSHFT);
+    return ( this.n_type & N_TMASK ) == ( DT_FCN << N_BTSHFT );
   }
 
   /**
@@ -221,7 +223,7 @@ public class Symbol
    */
   public boolean isLongName()
   {
-    return (this._n_name[0] == 0);
+    return ( this._n_name[0] == 0 );
   }
 
   /**
@@ -231,7 +233,7 @@ public class Symbol
    */
   public boolean isNoSymbol()
   {
-    return (this.n_type == T_NULL);
+    return ( this.n_type == T_NULL );
   }
 
   /**
@@ -239,7 +241,7 @@ public class Symbol
    */
   public boolean isPointer()
   {
-    return (this.n_type & N_TMASK) == (DT_PTR << N_BTSHFT);
+    return ( this.n_type & N_TMASK ) == ( DT_PTR << N_BTSHFT );
   }
 
   /**
@@ -254,7 +256,7 @@ public class Symbol
   /**
    * @param aOffset
    */
-  protected void relocateRelative(int aOffset)
+  protected void relocateRelative( int aOffset )
   {
     this.n_value += aOffset;
   }

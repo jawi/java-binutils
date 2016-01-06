@@ -1,14 +1,10 @@
-/*******************************************************************************
- * Copyright (c) 2011 - J.W. Janssen
- * 
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     J.W. Janssen - Cleanup and some small API changes.
- *******************************************************************************/
+ * (C) Copyright 2016 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2. 
+ */
 package nl.lxtreme.binutils.elf;
 
 
@@ -27,99 +23,60 @@ public class ElfTest
 {
   // METHODS
 
-  /**
-   * Test method for {@link nl.lxtreme.binutils.elf.Elf#Elf(java.lang.String)}.
-   */
   @Test
   public void testReadDynamicElfFileOk() throws Exception
   {
-    File resource = getResource("ts_print");
-    Elf e = new Elf(resource);
-    assertNotNull(e);
-
-    e.loadSymbols();
-
-    Attribute attributes = e.getAttributes();
-    assertNotNull(attributes);
-
-    Section[] sections = e.getSections();
-    assertNotNull(sections);
-
-    ProgramHeader[] programHeaders = e.getProgramHeaders();
-    assertNotNull(programHeaders);
-
-    dumpProgramHeaders(programHeaders);
+    doTestReadElfObject( getResource( "ts_print" ) );
   }
 
-  /**
-   * Test method for {@link nl.lxtreme.binutils.elf.Elf#Elf(java.lang.String)}.
-   */
   @Test
   public void testReadOtherDynamicElfFileOk() throws Exception
   {
-    File resource = getResource("con_flash");
-    Elf e = new Elf(resource);
-    assertNotNull(e);
-
-    e.loadSymbols();
-
-    Attribute attributes = e.getAttributes();
-    assertNotNull(attributes);
-
-    Section[] sections = e.getSections();
-    assertNotNull(sections);
-
-    ProgramHeader[] programHeaders = e.getProgramHeaders();
-    assertNotNull(programHeaders);
-
-    dumpProgramHeaders(programHeaders);
-    
-    ElfHeader header = e.getHeader();
-    assertNotNull(header);
-    
-    System.out.printf("Entry point: 0x%x\n", header.getEntryPoint());
+    doTestReadElfObject( getResource( "con_flash" ) );
   }
 
-  /**
-   * Test method for {@link nl.lxtreme.binutils.elf.Elf#Elf(java.lang.String)}.
-   */
   @Test
   public void testReadStaticElfFileOk() throws Exception
   {
-    File resource = getResource("miniBench_neon");
-    Elf e = new Elf(resource);
-    assertNotNull(e);
+    doTestReadElfObject( getResource( "miniBench_neon" ) );
+  }
 
-    e.loadSymbols();
+  @Test
+  public void testReadOtherStaticElfFileOk() throws Exception
+  {
+    doTestReadElfObject( getResource( "helloWorld_static" ) );
+  }
 
-    Attribute attributes = e.getAttributes();
-    assertNotNull(attributes);
+  private void doTestReadElfObject( File resource ) throws Exception
+  {
+    Elf e = new Elf( resource );
+    assertNotNull( e );
 
-    Section[] sections = e.getSections();
-    assertNotNull(sections);
+    SectionHeader[] sections = e.sectionHeaders;
+    assertNotNull( sections );
 
-    ProgramHeader[] programHeaders = e.getProgramHeaders();
-    assertNotNull(programHeaders);
+    ProgramHeader[] programHeaders = e.programHeaders;
+    assertNotNull( programHeaders );
 
-    dumpProgramHeaders(programHeaders);
-    
-    ElfHeader header = e.getHeader();
-    assertNotNull(header);
-    
-    System.out.printf("Entry point: 0x%x\n", header.getEntryPoint());
+    dumpProgramHeaders( programHeaders );
+
+    Header header = e.header;
+    assertNotNull( header );
+
+    System.out.printf( "Entry point: 0x%x\n", header.entryPoint );
   }
 
   /**
    * @param aProgramHeaders
    */
-  private void dumpProgramHeaders(ProgramHeader[] aProgramHeaders)
+  private void dumpProgramHeaders( ProgramHeader[] aProgramHeaders )
   {
-    for (ProgramHeader ph : aProgramHeaders)
+    for ( ProgramHeader ph : aProgramHeaders )
     {
-      System.out.printf("Type:\t\t %s\n", ph.getTypeName());
-      System.out.printf("Virtual address: 0x%x\n", ph.getVirtualAddress());
-      System.out.printf("Physical address:0x%x\n", ph.getPhysicalAddress());
-      System.out.printf("Memory size:\t 0x%x\n", ph.getMemorySize());
+      System.out.printf( "Type:\t\t %s\n", ph.type );
+      System.out.printf( "Virtual address: 0x%x\n", ph.virtualAddress );
+      System.out.printf( "Physical address:0x%x\n", ph.physicalAddress );
+      System.out.printf( "Memory size:\t 0x%x\n", ph.segmentMemorySize );
       System.out.println();
     }
   }
@@ -129,14 +86,14 @@ public class ElfTest
    * @return
    * @throws URISyntaxException
    */
-  private File getResource(String aName) throws Exception
+  private File getResource( String aName ) throws Exception
   {
-    URL url = getClass().getClassLoader().getResource(aName);
-    if ((url != null) && "file".equals(url.getProtocol()))
+    URL url = getClass().getClassLoader().getResource( aName );
+    if ( ( url != null ) && "file".equals( url.getProtocol() ) )
     {
-      return new File(url.getPath()).getCanonicalFile();
+      return new File( url.getPath() ).getCanonicalFile();
     }
-    fail("Resource " + aName + " not found!");
+    fail( "Resource " + aName + " not found!" );
     return null; // to keep compiler happy...
   }
 }
