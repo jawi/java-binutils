@@ -1,219 +1,239 @@
-/*******************************************************************************
- * Copyright (c) 2011, J.W. Janssen
- * 
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     QNX Software Systems - Initial API and implementation
- *     J.W. Janssen - Cleanup and make API more OO-oriented.
- *******************************************************************************/
+ * (C) Copyright 2016 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2. 
+ */
 package nl.lxtreme.binutils.coff;
 
 
 import java.io.*;
+import java.nio.*;
+import java.nio.channels.*;
+import java.nio.file.*;
 
 
 /**
- * 
+ * Represents a COFF file.
+ * <p>
+ * This class is <b>not</b> thread-safe!
+ * </p>
  */
-public class Coff
+public class Coff implements Closeable
 {
-  // VARIABLES
+  public final FileHeader fileHeader;
+  public final OptionalHeader optHeader;
+  public final SectionHeader[] sectionHeaders;
+  public final Symbol[] symbols;
 
-  private FileHeader filehdr;
-  private OptionalHeader opthdr;
-  private final ERandomAccessFile rfile;
-  private byte[] string_table;
-  private SectionHeader[] scnhdrs;
-  private Symbol[] symbols;
+  private FileChannel channel;
 
-  // CONSTRUCTORS
+  public Coff( File file ) throws IOException
+  {
+    this( FileChannel.open( file.toPath(), StandardOpenOption.READ ) );
+  }
+
+  public Coff( FileChannel channel ) throws IOException
+  {
+    this.channel = channel;
+    this.fileHeader = new FileHeader( channel );
+
+    ByteBuffer buf = ByteBuffer.allocate( Math.max( 40, fileHeader.optionalHeaderSize ) );
+    buf.limit( fileHeader.optionalHeaderSize );
+    buf.order( fileHeader.getByteOrder() );
+    readFully( channel, buf, "Unable to read optional header!" );
+
+    this.optHeader = new OptionalHeader( buf );
+
+    buf.clear();
+    buf.limit( 40 );
+
+    this.sectionHeaders = new SectionHeader[fileHeader.sectionCount];
+    for ( int i = 0; i < sectionHeaders.length; i++ )
+    {
+      readFully( channel, buf, "Unable to read section header #" + ( i + 1 ) );
+
+      sectionHeaders[i] = new SectionHeader( buf );
+    }
+
+    byte[] stringTable = new byte[0];
+
+    long stringPos = fileHeader.symbolFilePtr + ( fileHeader.symbolCount * 18 );
+    if ( stringPos > 0 && stringPos < channel.size() )
+    {
+      channel.position( stringPos );
+
+      buf.clear();
+      buf.limit( 4 );
+      readFully( channel, buf, "Unable to read string table size!" );
+
+      int size = buf.getInt();
+
+      ByteBuffer stringBuf = ByteBuffer.allocate( size );
+      readFully( channel, stringBuf, "Unable to read string table!" );
+
+      stringTable = stringBuf.array();
+    }
+
+    buf.clear();
+    buf.limit( 18 );
+
+    this.symbols = new Symbol[fileHeader.symbolCount];
+    for ( int i = 0; i < symbols.length; i++ )
+    {
+      readFully( channel, buf, "Unable to read symbol #" + ( i + 1 ) );
+
+      symbols[i] = new Symbol( buf, stringTable );
+    }
+  }
+
+  static void readFully( ReadableByteChannel ch, ByteBuffer buf, String errMsg ) throws IOException
+  {
+    buf.rewind();
+    int read = ch.read( buf );
+    if ( read != buf.limit() )
+    {
+      throw new IOException( errMsg + " Read only " + read + " of " + buf.limit() + " bytes!" );
+    }
+    buf.flip();
+  }
+
+  static String getZString( byte[] buf, int offset )
+  {
+    int end = offset;
+    while ( end < buf.length && buf[end] != 0 )
+    {
+      end++;
+    }
+    return new String( buf, offset, ( end - offset ) );
+  }
+
+  @Override
+  public void close() throws IOException
+  {
+    if ( channel != null )
+    {
+      channel.close();
+      channel = null;
+    }
+  }
 
   /**
-   * Creates a new Coff instance.
+   * Returns the line number information for the given section. The section
+   * should represent a ".text" or other code section.
    * 
-   * @param aFile
-   * @throws IOException
+   * @return an array of line number information, or an empty array if no such
+   *         information is present.
    */
-  public Coff( File aFile ) throws IOException
+  public LineNumber[] getLineNumbers( SectionHeader shdr ) throws IOException
   {
-    this.rfile = new ERandomAccessFile( aFile, "r" );
-    this.rfile.setEndiannes( true /* aLittleEndian */ );
-
-    try
+    if ( shdr == null )
     {
-      this.filehdr = new FileHeader( this.rfile );
-      if ( this.filehdr.hasOptionalHeader() )
-      {
-        this.opthdr = new OptionalHeader( this.rfile );
-      }
+      throw new IllegalArgumentException( "Header cannot be null!" );
     }
-    finally
+    if ( channel == null )
     {
-      if ( this.filehdr == null )
-      {
-        this.rfile.close();
-      }
+      throw new IOException( "ELF file is already closed!" );
     }
-  }
-
-  // METHODS
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public FileHeader getFileHeader() throws IOException
-  {
-    return this.filehdr;
-  }
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public OptionalHeader getOptionalHeader() throws IOException
-  {
-    return this.opthdr;
-  }
-
-  /**
-   * @return
-   * @throws IOException
-   */
-  public SectionHeader[] getSectionHeaders() throws IOException
-  {
-    if ( this.scnhdrs == null )
+    if ( shdr.lineNumberOffset == 0 || shdr.lineNumberSize == 0 )
     {
-      FileHeader header = getFileHeader();
-
-      this.scnhdrs = new SectionHeader[header.getSymbolTableEntryCount()];
-      for ( int i = 0; i < this.scnhdrs.length; i++ )
-      {
-        this.scnhdrs[i] = new SectionHeader( this.rfile );
-      }
+      // Nothing to do...
+      return new LineNumber[0];
     }
-    return this.scnhdrs;
-  }
 
-  /**
-   * @return
-   * @throws IOException
-   */
-  public byte[] getStringTable() throws IOException
-  {
-    if ( this.string_table == null )
+    ByteBuffer buf = ByteBuffer.allocate( 10 );
+    buf.order( fileHeader.getByteOrder() );
+
+    channel.position( shdr.lineNumberOffset );
+
+    LineNumber[] result = new LineNumber[shdr.lineNumberSize];
+    for ( int i = 0; i < result.length; i++ )
     {
-      FileHeader header = getFileHeader();
+      readFully( channel, buf, "Unable to read line number information!" );
 
-      long symbolSize = Symbol.SYMSZ * header.getSymbolTableEntryCount();
-      long offset = header.getSymbolTableOffset() + symbolSize;
-
-      this.rfile.seek( offset );
-
-      int str_len = this.rfile.readIntE();
-      if ( ( str_len > 4 ) && ( str_len < this.rfile.length() ) )
-      {
-        str_len -= 4;
-        this.string_table = new byte[str_len];
-        this.rfile.seek( offset + 4 );
-        this.rfile.readFully( this.string_table );
-      }
-      else
-      {
-        this.string_table = new byte[0];
-      }
+      result[i] = new LineNumber( buf );
     }
-    return this.string_table;
+
+    return result;
   }
 
   /**
-   * @return
-   * @throws IOException
+   * Returns the relocation information for the given section. The section
+   * should represent a ".text" or other code section.
+   * 
+   * @return an array of relocation information, or an empty array if no such
+   *         information is present.
    */
-  public Symbol[] getSymbols() throws IOException
+  public RelocationInfo[] getRelocationInfo( SectionHeader shdr ) throws IOException
   {
-    if ( this.symbols == null )
+    if ( shdr == null )
     {
-      long offset = getFileHeader().getSymbolTableOffset();
-      this.rfile.seek( offset );
-      this.symbols = new Symbol[getFileHeader().getSymbolTableEntryCount()];
-      for ( int i = 0; i < this.symbols.length; i++ )
-      {
-        this.symbols[i] = new Symbol( this.rfile );
-      }
+      throw new IllegalArgumentException( "Header cannot be null!" );
     }
-    return this.symbols;
+    if ( channel == null )
+    {
+      throw new IOException( "ELF file is already closed!" );
+    }
+    if ( shdr.relocTableOffset == 0 || shdr.relocTableSize == 0 )
+    {
+      // Nothing to do...
+      return new RelocationInfo[0];
+    }
+
+    ByteBuffer buf = ByteBuffer.allocate( 10 );
+    buf.order( fileHeader.getByteOrder() );
+
+    channel.position( shdr.relocTableOffset );
+
+    RelocationInfo[] result = new RelocationInfo[shdr.relocTableSize];
+    for ( int i = 0; i < result.length; i++ )
+    {
+      readFully( channel, buf, "Unable to read relocation information!" );
+
+      result[i] = new RelocationInfo( buf );
+    }
+
+    return result;
   }
 
   /**
-   * {@inheritDoc}
+   * Returns the actual section data (= executable code + initialized data) for
+   * the given section header.
+   * 
+   * @return a byte buffer from which the data can be read, never
+   *         <code>null</code>.
    */
+  public ByteBuffer getSectionData( SectionHeader shdr ) throws IOException
+  {
+    if ( shdr == null )
+    {
+      throw new IllegalArgumentException( "Header cannot be null!" );
+    }
+    if ( channel == null )
+    {
+      throw new IOException( "ELF file is already closed!" );
+    }
+
+    ByteBuffer buf = ByteBuffer.allocate( ( int )shdr.size );
+    buf.order( fileHeader.getByteOrder() );
+
+    channel.position( shdr.dataOffset );
+    readFully( channel, buf, "Unable to read section completely!" );
+
+    return buf;
+  }
+
   @Override
   public String toString()
   {
-    StringBuffer buffer = new StringBuffer();
-    try
+    StringBuilder sb = new StringBuilder( "COFF " );
+    sb.append( fileHeader ).append( "; " );
+    sb.append( optHeader ).append( "\n" );
+    for ( int i = 0; i < sectionHeaders.length; i++ )
     {
-      FileHeader header = getFileHeader();
-      if ( header != null )
-      {
-        buffer.append( header );
-      }
+      sb.append( "\t" ).append( sectionHeaders[i] ).append( "\n" );
     }
-    catch ( IOException e )
-    {
-      e.printStackTrace();
-    }
-    try
-    {
-      OptionalHeader opt = null;
-      opt = getOptionalHeader();
-      if ( opt != null )
-      {
-        buffer.append( opt );
-      }
-    }
-    catch ( IOException e )
-    {
-      e.printStackTrace();
-    }
-    try
-    {
-      SectionHeader[] sections = getSectionHeaders();
-      for ( SectionHeader section : sections )
-      {
-        buffer.append( section );
-      }
-    }
-    catch ( IOException e )
-    {
-    }
-
-    try
-    {
-      Symbol[] table = getSymbols();
-      for ( Symbol element : table )
-      {
-        buffer.append( element.getName( getStringTable() ) ).append( '\n' );
-      }
-    }
-    catch ( IOException e )
-    {
-    }
-
-    // try {
-    // String[] strings = getStringTable(getStringTable());
-    // for (int i = 0; i < strings.length; i++) {
-    // buffer.append(strings[i]);
-    // }
-    // } catch (IOException e) {
-    // e.printStackTrace();
-    // }
-    return buffer.toString();
+    return sb.toString();
   }
 }

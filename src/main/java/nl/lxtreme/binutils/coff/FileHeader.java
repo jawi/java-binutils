@@ -1,201 +1,120 @@
-/*******************************************************************************
- * Copyright (c) 2011, J.W. Janssen
- * 
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     QNX Software Systems - Initial API and implementation
- *     J.W. Janssen - Cleanup and make API more OO-oriented.
- *******************************************************************************/
+ * (C) Copyright 2016 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2. 
+ */
 package nl.lxtreme.binutils.coff;
 
 
+import static nl.lxtreme.binutils.coff.Coff.*;
+
 import java.io.*;
-import java.text.*;
-import java.util.*;
+import java.nio.*;
+import java.nio.channels.*;
 
 
 /**
- * 
+ * Represents a COFF file header.
  */
 public class FileHeader
 {
-  // CONSTANTS
-
-  public final static int FILHSZ = 20;
-
   // relocation info stripped from file
-  public final static int F_RELFLG = 0x0001;
+  public static final int F_RELFLG = 0x0001;
   // file is executable (no unresolved external references)
-  public final static int F_EXEC = 0x0002;
+  public static final int F_EXEC = 0x0002;
   // line numbers stripped from file
-  public final static int F_LNNO = 0x0004;
+  public static final int F_LNNO = 0x0004;
   // local symbols stripped from file
-  public final static int F_LSYMS = 0x0008;
+  public static final int F_LSYMS = 0x0008;
+  // Aggressively trim working set
+  public static final int F_AGGRESSIVE_WS_TRIM = 0x0010;
+  // App can handle >2GB addresses.
+  public static final int F_LARGE_ADDRESS_AWARE = 0x0020;
+  // Use of this flag is reserved for future use.
+  public static final int F_FILE_16BIT_MACHINE = 0x0040;
   // file is 16-bit little-endian
-  public final static int F_AR16WR = 0x0080;
+  public static final int F_AR16WR = 0x0080;
   // file is 32-bit little-endian
-  public final static int F_AR32WR = 0x0100;
-  // file is 32-bit big-endian
-  public final static int F_AR32W = 0x0200;
+  public static final int F_AR32WR = 0x0100;
+  // file is 32-bit big-endian or debug information stripped.
+  public static final int F_AR32W = 0x0200;
+  // If image is on removable media, copy and run from swap file.
+  public static final int F_REMOVABLE_RUN_FROM_SWAP = 0x0400;
   // rs/6000 aix: dynamically loadable w/imports & exports
-  public final static int F_DYNLOAD = 0x1000;
-  // rs/6000 aix: file is a shared object
-  public final static int F_SHROBJ = 0x2000;
-  // PE format DLL.
-  public final static int F_DLL = 0x2000;
+  public static final int F_DYNLOAD = 0x1000;
+  // rs/6000 aix: file is a shared object or PE format DLL.
+  public static final int F_SHROBJ = 0x2000;
+  // File should be run only on a UP machine.
+  public static final int F_UP_SYSTEM_ONLY = 0x4000;
+  // Big endian: MSB precedes LSB in memory.
+  public static final int F_AR32BE = 0x8000;
 
-  // VARIABLES
+  public final MachineType machineType;
+  public final int sectionCount;
+  public final long timestamp;
+  public final long symbolFilePtr;
+  public final int symbolCount;
+  public final int optionalHeaderSize;
+  public final int flags;
 
-  private final int magic; /* 00-01 2 bytes: magic number */
-  private final int nscns; /* 02-03 2 bytes: number of sections: 2 bytes */
-  private final int timdat; /* 04-07 4 bytes: time & date stamp */
-  private final int symptr; /* 08-11 4 bytes: file pointer to symtab */
-  private final int nsyms; /* 12-15 4 bytes: number of symtab entries */
-  private final int opthdr; /* 16-17 2 bytes: sizeof(optional hdr) */
-  private final int flags; /* 18-19 2 bytes: flags */
-
-  // CONSTRUCTORS
-
-  /**
-   * Creates a new FileHeader instance.
-   * 
-   * @param aFile
-   * @throws IOException
-   */
-  FileHeader(ERandomAccessFile aFile) throws IOException
+  public FileHeader( FileChannel channel ) throws IOException
   {
-    this.magic = aFile.readShortE();
-    this.nscns = aFile.readShortE();
-    this.timdat = aFile.readIntE();
-    this.symptr = aFile.readIntE();
-    this.nsyms = aFile.readIntE();
-    this.opthdr = aFile.readShortE();
-    this.flags = aFile.readShortE();
-  }
+    final ByteBuffer buf = ByteBuffer.allocate( 20 );
 
-  // METHODS
+    buf.order( ByteOrder.LITTLE_ENDIAN );
+    readFully( channel, buf, "Unable to read file header!" );
 
-  /**
-   * Returns the time & date stamp.
-   * 
-   * @return a time & date stamp.
-   */
-  public int getDateTime()
-  {
-    return this.timdat;
+    machineType = MachineType.valueOf( buf.getShort() );
+    sectionCount = buf.getShort();
+    timestamp = buf.getInt();
+    symbolFilePtr = buf.getInt();
+    symbolCount = buf.getInt();
+    optionalHeaderSize = buf.getShort();
+    flags = buf.getShort();
   }
 
   /**
-   * Returns the current value of flags.
-   * 
-   * @return the flags
+   * @return <code>true</code> if the COFF file is stripped and has no symbols,
+   *         <code>false</code> otherwise.
    */
-  public int getFlags()
+  public boolean isStripped()
   {
-    return this.flags;
+    return symbolFilePtr == 0 && symbolCount == 0;
   }
 
-  /**
-   * Returns the current value of magic.
-   * 
-   * @return the magic
-   */
-  public int getMagic()
-  {
-    return this.magic;
-  }
-
-  /**
-   * @return
-   */
-  public int getOptionalHeaderSize()
-  {
-    return this.opthdr;
-  }
-
-  /**
-   * Returns the number of sections.
-   * 
-   * @return a section count, >= 0.
-   */
-  public int getSectionCount()
-  {
-    return this.nscns;
-  }
-
-  /**
-   * @return the file pointer to symbol table.
-   */
-  public int getSymbolTableEntryCount()
-  {
-    return this.nsyms;
-  }
-
-  /**
-   * @return the file pointer to symbol table.
-   */
-  public int getSymbolTableOffset()
-  {
-    return this.symptr;
-  }
-
-  /**
-   * @return
-   */
-  public boolean hasOptionalHeader()
-  {
-    return this.opthdr > 0;
-  }
-
-  /**
-   * @return
-   */
-  public boolean isDebug()
-  {
-    return !((this.flags & F_LNNO) == F_LNNO);
-  }
-
-  /**
-   * @return
-   */
-  public boolean isExec()
-  {
-    return (this.flags & F_EXEC) == F_EXEC;
-  }
-
-  /**
-   * @return
-   */
-  public boolean isStrip()
-  {
-    return (this.flags & F_RELFLG) == F_RELFLG;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
   @Override
   public String toString()
   {
-    StringBuilder buffer = new StringBuilder();
-    buffer.append("FILE HEADER VALUES").append('\n');
+    StringBuilder sb = new StringBuilder();
+    sb.append( machineType );
+    if ( timestamp != 0 )
+    {
+      sb.append( "created at " ).append( timestamp );
+    }
+    if ( isStripped() )
+    {
+      sb.append( " (stripped)" );
+    }
+    else
+    {
+      sb.append( " (" ).append( symbolCount ).append( " symbols)" );
+    }
+    if ( flags != 0 )
+    {
+      sb.append( " flags = 0x" ).append( Integer.toHexString( flags ) );
+    }
+    return sb.toString();
+  }
 
-    buffer.append("f_magic = ").append(this.magic).append('\n');
-    buffer.append("f_nscns = ").append(this.nscns).append('\n');
-
-    buffer.append("f_timdat = ");
-    buffer.append(DateFormat.getDateInstance().format(new Date(this.timdat)));
-    buffer.append('\n');
-
-    buffer.append("f_symptr = ").append(this.symptr).append('\n');
-    buffer.append("f_nsyms = ").append(this.nsyms).append('\n');
-    buffer.append("f_opthdr = ").append(this.opthdr).append('\n');
-    buffer.append("f_flags = ").append(this.flags).append('\n');
-    return buffer.toString();
+  public ByteOrder getByteOrder()
+  {
+    ByteOrder result = ByteOrder.LITTLE_ENDIAN;
+    if ( ( flags & F_AR32BE ) != 0 || ( flags & F_AR32W ) != 0 )
+    {
+      result = ByteOrder.BIG_ENDIAN;
+    }
+    return result;
   }
 }
