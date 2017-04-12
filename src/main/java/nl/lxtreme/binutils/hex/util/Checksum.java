@@ -1,14 +1,10 @@
-/*******************************************************************************
- * Copyright (c) 2011, J.W. Janssen
- * 
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     J.W. Janssen - Cleanup and make API more OO-oriented.
- *******************************************************************************/
+ * (C) Copyright 2017 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2.
+ */
 package nl.lxtreme.binutils.hex.util;
 
 
@@ -17,88 +13,92 @@ package nl.lxtreme.binutils.hex.util;
  */
 public enum Checksum
 {
-  ONES_COMPLEMENT, //
-  TWOS_COMPLEMENT, //
-  ;
+  /** */
+  ONES_COMPLEMENT
+  {
+    @Override
+    public Checksummer instance( byte seed )
+    {
+      return new BaseChecksummer( seed )
+      {
+        @Override
+        public byte getResult()
+        {
+          return ( byte )( ~this.sum );
+        }
+      };
+    }
+  },
+  /** */
+  TWOS_COMPLEMENT
+  {
+    @Override
+    public Checksummer instance( byte seed )
+    {
+      return new BaseChecksummer( seed )
+      {
+        @Override
+        public byte getResult()
+        {
+          return ( byte )( ~this.sum + 1 );
+        }
+      };
+    }
+  };
 
   // METHODS
 
   /**
-   * Calculates the checksum for the given array of byte-values.
-   * 
-   * @param aValues
-   *          the values to calculate the checksum for, should be at least two
-   *          values.
-   * @return the 8-bit checksum.
-   * @throws IllegalArgumentException
-   *           in case the given values were <code>null</code> or did not
-   *           contain at least two values.
+   * @return a new instance, cannot be <code>null</code>.
    */
-  public byte calculate(final byte... aValues) throws IllegalArgumentException
+  public final Checksummer instance()
   {
-    if (aValues == null)
-    {
-      throw new IllegalArgumentException("Values cannot be null!");
-    }
-    if (aValues.length < 2)
-    {
-      throw new IllegalArgumentException("Should have at least two values to calculate the checksum!");
-    }
-
-    int sum = 0;
-    for (int value : aValues)
-    {
-      sum += value;
-    }
-
-    switch (this)
-    {
-      case ONES_COMPLEMENT:
-        return (byte) (~sum);
-      case TWOS_COMPLEMENT:
-        return (byte) (~sum + 1);
-      default:
-        throw new IllegalArgumentException("Unhandled checksum!");
-    }
+    return instance( ( byte )0 );
   }
 
   /**
-   * Calculates the checksum for the given array of integer-values.
-   * 
-   * @param aValues
-   *          the values to calculate the checksum for, should be at least two
-   *          values.
-   * @return the 16-bit checksum.
-   * @throws IllegalArgumentException
-   *           in case the given values were <code>null</code> or did not
-   *           contain at least one value.
+   * @param seed
+   *          the initial value to use for the checksum calculation.
+   * @return a new instance, cannot be <code>null</code>.
    */
-  public int calculate(final int... aValues) throws IllegalArgumentException
+  public abstract Checksummer instance( byte seed );
+
+  /**
+   * Base implementation of a {@link Checksummer} shared by the various specific
+   * implementations.
+   */
+  static abstract class BaseChecksummer implements Checksummer
   {
-    if (aValues == null)
+    protected byte sum;
+
+    public BaseChecksummer( byte seed )
     {
-      throw new IllegalArgumentException("Values cannot be null!");
-    }
-    if (aValues.length < 0)
-    {
-      throw new IllegalArgumentException("Should have at least one values to calculate the checksum!");
+      this.sum = seed;
     }
 
-    int sum = 0;
-    for (int value : aValues)
+    @Override
+    public final Checksummer add( byte... aValues )
     {
-      sum += value;
+      for ( byte value : aValues )
+      {
+        this.sum += value;
+      }
+      return this;
     }
 
-    switch (this)
+    @Override
+    public final Checksummer addWord( int value )
     {
-      case ONES_COMPLEMENT:
-        return (~sum) & 0xFFFF;
-      case TWOS_COMPLEMENT:
-        return (~sum + 1) & 0xFFFF;
-      default:
-        throw new IllegalArgumentException("Unhandled checksum!");
+      add( ( byte )( ( value >> 8 ) & 0xFF ) );
+      add( ( byte )( value & 0xFF ) );
+      return this;
+    }
+
+    @Override
+    public final Checksummer reset()
+    {
+      this.sum = 0;
+      return this;
     }
   }
-
 }

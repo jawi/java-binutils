@@ -1,17 +1,16 @@
-= java-binutils =
+# java-binutils
 
-A small utility library, based on code found in Eclipse, that can read
-AR, ELF and COFF files. Some patches and modifications on the original
-code have been made.
+A small utility library that can read various binary format files, like AR, ELF, COFF, Intel-Hex and Motorola S-record (srec) files.
 
-== License ==
+Note that the original implementation of the various readers were modified versions of code found in the Eclipse project. As from
+2016, the implementations were rewritten from scratch and as such open sourced under another license.
 
-The original code is released by QNX under the Eclipse Public License 
-v1.0, and all modifications done by me are released under that same
-license as well.
+## License
 
-== Authors ==
+This implementation is released under the Apache License v2.
 
-Original code made by QNX Software Systems and others. This version is
-patches and modified by J.W. Janssen.
+Copyright (C) 2017, Jan Willem Janssen <j.w.janssen@lxtreme.nl>
 
+## Authors
+
+This version is created and maintained by J.W. Janssen.

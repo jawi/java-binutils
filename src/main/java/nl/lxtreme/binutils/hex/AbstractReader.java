@@ -1,14 +1,10 @@
-/*******************************************************************************
- * Copyright (c) 2011, J.W. Janssen
- * 
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     J.W. Janssen - Cleanup and make API more OO-oriented.
- *******************************************************************************/
+ * (C) Copyright 2017 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2.
+ */
 package nl.lxtreme.binutils.hex;
 
 
@@ -19,7 +15,7 @@ import nl.lxtreme.binutils.hex.util.*;
 
 
 /**
- * 
+ * Base implementation for interpreting hex-based data files.
  */
 public abstract class AbstractReader
 {
@@ -32,16 +28,16 @@ public abstract class AbstractReader
   /**
    * Creates a new AbstractReader instance.
    */
-  public AbstractReader(final Reader aReader)
+  public AbstractReader( Reader aReader )
   {
-    this.reader = (aReader instanceof BufferedReader) ? (BufferedReader) aReader : new BufferedReader(aReader);
+    this.reader = ( aReader instanceof BufferedReader ) ? ( BufferedReader )aReader : new BufferedReader( aReader );
   }
 
   // METHODS
 
   /**
    * Closes this instruction stream.
-   * 
+   *
    * @throws IOException
    *           in case of stream I/O problems.
    */
@@ -51,26 +47,16 @@ public abstract class AbstractReader
   }
 
   /**
-   * @return
+   * @return the current address location, or <tt>-1</tt> if no address is
+   *         known.
    * @throws IOException
+   *           in case of I/O problems.
    */
   public abstract long getAddress() throws IOException;
 
   /**
-   * Marks the current "position" in the stream.
-   * 
-   * @throws IOException
-   *           in case of stream I/O problems.
-   * @see #reset()
-   */
-  public void mark() throws IOException
-  {
-    this.reader.mark(1024);
-  }
-
-  /**
-   * Reads a number of bytes in the given buffer.
-   * 
+   * Reads a single byte from the underlying stream.
+   *
    * @return the next byte, can be <code>-1</code> in case an end-of-stream was
    *         encountered.
    * @throws IOException
@@ -79,70 +65,53 @@ public abstract class AbstractReader
   public abstract int readByte() throws IOException;
 
   /**
-   * Reads a number of bytes in the given buffer.
-   * 
+   * Reads a long word (4 bytes) from the underlying stream.
+   *
    * @return the next long word, can be <code>-1</code> in case an end-of-stream
-   *         was
-   *         encountered.
+   *         was encountered.
    * @throws IOException
    *           in case of stream I/O problems;
    */
   public int readLongWord() throws IOException
   {
-    final byte[] data = readBytes(4);
-    if (data == null)
+    final byte[] data = readBytes( 4 );
+    if ( data == null )
     {
       return -1;
     }
 
-    return (int) ByteOrderUtils.decode(getByteOrder(), data);
+    return ( int )ByteOrderUtils.decode( getByteOrder(), data );
   }
 
   /**
-   * Reads a number of bytes in the given buffer.
-   * 
-   * @return the next word, can be <code>-1</code> in case an end-of-stream
-   *         was encountered.
+   * Reads a word (2 bytes) from the underlying stream.
+   *
+   * @return the next word, can be <code>-1</code> in case an end-of-stream was
+   *         encountered.
    * @throws IOException
    *           in case of stream I/O problems;
    */
   public int readWord() throws IOException
   {
-    final byte[] data = readBytes(2);
-    if (data == null)
+    final byte[] data = readBytes( 2 );
+    if ( data == null )
     {
       return -1;
     }
 
-    return (int) ByteOrderUtils.decode(ByteOrder.LITTLE_ENDIAN, data);
-  }
-
-  /**
-   * Resets the current "position" in the stream back to the last "marking"
-   * point.
-   * <p>
-   * In case no mark was set, this operation does nothing.
-   * </p>
-   * 
-   * @throws IOException
-   *           in case of stream I/O problems.
-   * @see #mark()
-   */
-  public void reset() throws IOException
-  {
-    this.reader.reset();
+    return ( int )ByteOrderUtils.decode( ByteOrder.LITTLE_ENDIAN, data );
   }
 
   /**
    * Returns the byte order in which this data provider reads its data.
-   * 
+   *
    * @return a byte order, never <code>null</code>.
    */
   protected abstract ByteOrder getByteOrder();
 
   /**
    * Convenience method to read a number of bytes.
-   * 
+   *
    * @param aCount
    *          the number of bytes to read, should be > 0.
    * @return a byte array with the read bytes, can be <code>null</code> in case
@@ -152,43 +121,37 @@ public abstract class AbstractReader
    * @throws IllegalArgumentException
    *           in case the given count was <= 0.
    */
-  protected final byte[] readBytes(final int aCount) throws IOException, IllegalArgumentException
+  protected final byte[] readBytes( final int aCount ) throws IOException, IllegalArgumentException
   {
-    if (aCount <= 0)
+    if ( aCount <= 0 )
     {
-      throw new IllegalArgumentException("Count cannot be less or equal to zero!");
+      throw new IllegalArgumentException( "Count cannot be less or equal to zero!" );
     }
 
     final byte[] result = new byte[aCount];
-    for (int i = 0; i < aCount; i++)
+    for ( int i = 0; i < aCount; i++ )
     {
       int readByte = readByte();
-      if (readByte == -1)
+      if ( readByte == -1 )
       {
         return null;
       }
-      result[i] = (byte) readByte;
+      result[i] = ( byte )readByte;
     }
 
     return result;
   }
 
-  /**
-   * @param aCount
-   * @return
-   * @throws IOException
-   * @throws IllegalArgumentException
-   */
-  protected final char[] readChars(final int aCount) throws IOException, IllegalArgumentException
+  protected final char[] readChars( final int aCount ) throws IOException, IllegalArgumentException
   {
-    if (aCount <= 0)
+    if ( aCount <= 0 )
     {
-      throw new IllegalArgumentException("Invalid count!");
+      throw new IllegalArgumentException( "Invalid count!" );
     }
     final char[] buf = new char[aCount];
-    if (this.reader.read(buf) != aCount)
+    if ( this.reader.read( buf ) != aCount )
     {
-      throw new IOException("Unexpected end of stream!");
+      throw new IOException( "Unexpected end of stream!" );
     }
     return buf;
   }
@@ -203,7 +166,7 @@ public abstract class AbstractReader
     {
       ch = this.reader.read();
     }
-    while ((ch != -1) && Character.isWhitespace(ch));
+    while ( ( ch != -1 ) && Character.isWhitespace( ch ) );
     return ch;
   }
 

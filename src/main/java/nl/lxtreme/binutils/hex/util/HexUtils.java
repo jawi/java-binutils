@@ -1,23 +1,18 @@
-/*******************************************************************************
- * Copyright (c) 2011, J.W. Janssen
- * 
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     J.W. Janssen - Cleanup and make API more OO-oriented.
- *******************************************************************************/
+ * (C) Copyright 2017 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2.
+ */
 package nl.lxtreme.binutils.hex.util;
 
 
 import java.io.*;
-import java.nio.*;
 
 
 /**
- * 
+ * Provides some convenience utilities to work with strings of hex digits.
  */
 public final class HexUtils
 {
@@ -35,7 +30,7 @@ public final class HexUtils
 
   /**
    * Parses the hex-byte in the given character sequence at the given offset.
-   * 
+   *
    * @param aInput
    *          the characters to parse as hex-bytes.
    * @return a byte value.
@@ -44,146 +39,37 @@ public final class HexUtils
    *           the given input did not yield a hex-byte, or the requested offset
    *           is outside the boundaries of the given char sequence.
    */
-  public static int parseHexByte(final char[] aInput) throws IllegalArgumentException
+  public static byte parseHexByte( char[] aInput ) throws IllegalArgumentException
   {
-    if (aInput == null)
+    if ( aInput == null )
     {
-      throw new IllegalArgumentException("Input cannot be null!");
+      throw new IllegalArgumentException( "Input cannot be null!" );
     }
-    return parseHexByte(new String(aInput), 0);
-  }
-
-  /**
-   * Parses the hex-byte in the given character sequence at the given offset.
-   * 
-   * @param aInput
-   *          the char sequence to parse as hex-bytes;
-   * @param aOffset
-   *          the offset in the char sequence to start parsing.
-   * @return a byte value.
-   * @throws IllegalArgumentException
-   *           in case the given char sequence was <code>null</code>, in case
-   *           the given input did not yield a hex-byte, or the requested offset
-   *           is outside the boundaries of the given char sequence.
-   */
-  public static int parseHexByte(final CharSequence aInput, final int aOffset) throws IllegalArgumentException
-  {
-    if (aInput == null)
+    if ( aInput.length < 2 )
     {
-      throw new IllegalArgumentException("Input cannot be null!");
+      throw new IllegalArgumentException( "Input should be at least two characters!" );
     }
-
-    try
-    {
-      return (Integer.parseInt(aInput.subSequence(aOffset, aOffset + 2).toString(), 16));
-    }
-    catch (IndexOutOfBoundsException exception)
-    {
-      throw new IllegalArgumentException("No such offset: " + aOffset + "; length = " + aInput.length());
-    }
-    catch (NumberFormatException exception)
-    {
-      throw new IllegalArgumentException("Not a hex-digit string: " + aInput);
-    }
+    return ( byte )( ( parseHex( aInput[0] ) << 4 ) | ( parseHex( aInput[1] ) ) );
   }
 
   /**
    * Reads two characters from the given reader and parses them as a single
    * hex-value byte.
-   * 
+   *
    * @param aReader
    * @return
    * @throws IllegalArgumentException
    * @throws IOException
    */
-  public static int parseHexByte(final Reader aReader) throws IllegalArgumentException, IOException
+  public static byte readHexByte( Reader aReader ) throws IllegalArgumentException, IOException
   {
-    return parseHexNumber(aReader, 1);
-  }
-
-  /**
-   * Parses the hex-byte in the given character sequence at the given offset.
-   * 
-   * @param aInput
-   *          the char sequence to parse as hex-bytes;
-   * @param aOffset
-   *          the offset in the char sequence to start parsing.
-   * @return a byte value.
-   * @throws IllegalArgumentException
-   *           in case the given char sequence was <code>null</code>, in case
-   *           the given input did not yield a hex-byte, or the requested offset
-   *           is outside the boundaries of the given char sequence.
-   */
-  public static int[] parseHexBytes(final CharSequence aInput, final int aOffset, final int aByteCount)
-      throws IllegalArgumentException
-  {
-    if (aInput == null)
-    {
-      throw new IllegalArgumentException("Input cannot be null!");
-    }
-    if (aByteCount < 0)
-    {
-      throw new IllegalArgumentException("Byte count cannot be less than one!");
-    }
-
-    try
-    {
-      final int[] result = new int[aByteCount];
-      int offset = aOffset;
-      for (int i = 0; i < aByteCount; i++, offset += 2)
-      {
-        result[i] = Integer.parseInt(aInput.subSequence(offset, offset + 2).toString(), 16);
-      }
-      return result;
-    }
-    catch (IndexOutOfBoundsException exception)
-    {
-      throw new IllegalArgumentException("No such offset: " + aOffset + "; length = " + aInput.length());
-    }
-    catch (NumberFormatException exception)
-    {
-      throw new IllegalArgumentException("Not a hex-digit string!");
-    }
-  }
-
-  /**
-   * @param aInput
-   * @param aOffset
-   * @param aByteCount
-   * @return
-   * @throws IllegalArgumentException
-   */
-  public static int parseHexNumber(final CharSequence aInput, final int aOffset, final int aByteCount)
-      throws IllegalArgumentException
-  {
-    if (aInput == null)
-    {
-      throw new IllegalArgumentException("Input cannot be null!");
-    }
-    if (aByteCount < 1)
-    {
-      throw new IllegalArgumentException("Byte count cannot be less than one!");
-    }
-
-    final int[] addressBytes = parseHexBytes(aInput, aOffset, aByteCount);
-
-    int address = 0;
-    for (int i = 0; i < aByteCount; i++)
-    {
-      address |= addressBytes[i];
-      if (i < aByteCount - 1)
-      {
-        address <<= 8;
-      }
-    }
-
-    return address;
+    return ( byte )readHexNumber( aReader, 1 );
   }
 
   /**
    * Reads a number of characters from the given reader and parses them as a
    * hex-value.
-   * 
+   *
    * @param aReader
    *          the reader to read the data from;
    * @param aByteCount
@@ -196,111 +82,49 @@ public final class HexUtils
    * @throws IOException
    *           in case of I/O problems.
    */
-  public static int parseHexNumber(final Reader aReader, final int aByteCount) throws IllegalArgumentException,
-      IOException
+  public static int readHexNumber( Reader aReader, int aByteCount ) throws IllegalArgumentException, IOException
   {
-    if (aReader == null)
+    if ( aReader == null )
     {
-      throw new IllegalArgumentException("Input cannot be null!");
+      throw new IllegalArgumentException( "Input cannot be null!" );
     }
-    if (aByteCount <= 0)
+    if ( aByteCount <= 0 )
     {
-      throw new IllegalArgumentException("Byte count cannot be less or equal to zero!");
-    }
-
-    final char[] buf = new char[2 * aByteCount];
-    if (aReader.read(buf) != buf.length)
-    {
-      throw new IOException("Unexpected end-of-stream?!");
+      throw new IllegalArgumentException( "Byte count cannot be less or equal to zero!" );
     }
 
     int result = 0;
-    for (char element : buf)
+    int nibbleCount = 2 * aByteCount;
+    while ( nibbleCount-- > 0 )
     {
-      int hexdigit = Character.digit(element, 16);
-      if (hexdigit < 0)
-      {
-        throw new IOException("Unexpected character: " + element);
-      }
-      result *= 16;
-      result |= hexdigit;
+      int hexdigit = parseHex( aReader.read() );
+      result = ( result << 4 ) | hexdigit;
     }
 
     return result;
   }
 
   /**
-   * Parses the hex-word in the given character sequence at the given offset
-   * assuming it is in big endian byte order.
-   * 
-   * @param aInput
-   *          the char sequence to parse as hex-bytes;
-   * @param aOffset
-   *          the offset in the char sequence to start parsing.
-   * @return a word value, in big endian byte order.
-   * @throws IllegalArgumentException
-   *           in case the given char sequence was <code>null</code>, in case
-   *           the given input did not yield a hex-byte, or the requested offset
-   *           is outside the boundaries of the given char sequence.
-   */
-  public static int parseHexWord(final char[] aInput) throws IllegalArgumentException
-  {
-    if (aInput == null)
-    {
-      throw new IllegalArgumentException("Input cannot be null!");
-    }
-    return parseHexWord(new String(aInput), 0);
-  }
-
-  /**
-   * Parses the hex-word in the given character sequence at the given offset
-   * assuming it is in big endian byte order.
-   * 
-   * @param aInput
-   *          the char sequence to parse as hex-bytes;
-   * @param aOffset
-   *          the offset in the char sequence to start parsing.
-   * @return a word value, in big endian byte order.
-   * @throws IllegalArgumentException
-   *           in case the given char sequence was <code>null</code>, in case
-   *           the given input did not yield a hex-byte, or the requested offset
-   *           is outside the boundaries of the given char sequence.
-   */
-  public static int parseHexWord(final CharSequence aInput, final int aOffset) throws IllegalArgumentException
-  {
-    if (aInput == null)
-    {
-      throw new IllegalArgumentException("Input cannot be null!");
-    }
-
-    try
-    {
-      int msb = Integer.parseInt(aInput.subSequence(aOffset + 0, aOffset + 2).toString(), 16);
-      int lsb = Integer.parseInt(aInput.subSequence(aOffset + 2, aOffset + 4).toString(), 16);
-      return ByteOrderUtils.createWord(ByteOrder.BIG_ENDIAN, msb, lsb);
-    }
-    catch (IndexOutOfBoundsException exception)
-    {
-      throw new IllegalArgumentException("No such offset: " + aOffset + "; length = " + aInput.length());
-    }
-    catch (NumberFormatException exception)
-    {
-      throw new IllegalArgumentException("Not a hex-digit string!");
-    }
-  }
-
-  /**
    * Reads four characters from the given reader and parses them as a single
    * hex-value word.
-   * 
+   *
    * @param aReader
    * @return
    * @throws IllegalArgumentException
    * @throws IOException
    */
-  public static int parseHexWord(final Reader aReader) throws IllegalArgumentException, IOException
+  public static int readHexWord( Reader aReader ) throws IllegalArgumentException, IOException
   {
-    return parseHexNumber(aReader, 2);
+    return ( readHexNumber( aReader, 2 ) & 0xFFFF );
   }
 
+  private static int parseHex( int c )
+  {
+    int v = Character.digit( c, 16 );
+    if ( v < 0 )
+    {
+      throw new IllegalArgumentException( "Unexpected character: " + c );
+    }
+    return v;
+  }
 }

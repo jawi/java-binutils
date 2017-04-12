@@ -1,14 +1,10 @@
-/*******************************************************************************
- * Copyright (c) 2011, J.W. Janssen
- * 
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/*
+ * BinUtils - access various binary formats from Java
  *
- * Contributors:
- *     J.W. Janssen - Cleanup and make API more OO-oriented.
- *******************************************************************************/
+ * (C) Copyright 2017 - JaWi - j.w.janssen@lxtreme.nl
+ *
+ * Licensed under Apache License v2.
+ */
 package nl.lxtreme.binutils.hex.util;
 
 
@@ -20,7 +16,7 @@ import org.junit.*;
 
 
 /**
- * 
+ *
  */
 public class ByteOrderTest
 {
@@ -33,7 +29,7 @@ public class ByteOrderTest
   @Test
   public void testCreateBigEndianWord()
   {
-    assertEquals(0xABCD, ByteOrderUtils.createWord(ByteOrder.BIG_ENDIAN, 0xAB, 0xCD));
+    assertEquals( 0xABCD, ByteOrderUtils.createWord( ByteOrder.BIG_ENDIAN, 0xAB, 0xCD ) );
   }
 
   /**
@@ -43,7 +39,7 @@ public class ByteOrderTest
   @Test
   public void testCreateLittleEndianWord()
   {
-    assertEquals(0xABCD, ByteOrderUtils.createWord(ByteOrder.LITTLE_ENDIAN, 0xCD, 0xAB));
+    assertEquals( 0xABCD, ByteOrderUtils.createWord( ByteOrder.LITTLE_ENDIAN, 0xCD, 0xAB ) );
   }
 
   /**
@@ -53,30 +49,28 @@ public class ByteOrderTest
   @Test
   public void testDecodeWordOk()
   {
-    assertEquals(0xABCD, ByteOrderUtils.decode(ByteOrder.BIG_ENDIAN, (byte) 0xAB, (byte) 0xCD));
-    assertEquals(0xCDAB, ByteOrderUtils.decode(ByteOrder.BIG_ENDIAN, (byte) 0xCD, (byte) 0xAB));
-    assertEquals(0xCDAB, ByteOrderUtils.decode(ByteOrder.LITTLE_ENDIAN, (byte) 0xAB, (byte) 0xCD));
-    assertEquals(0xABCD, ByteOrderUtils.decode(ByteOrder.LITTLE_ENDIAN, (byte) 0xCD, (byte) 0xAB));
+    assertEquals( 0xABCD, ByteOrderUtils.decode( ByteOrder.BIG_ENDIAN, ( byte )0xAB, ( byte )0xCD ) );
+    assertEquals( 0xCDAB, ByteOrderUtils.decode( ByteOrder.BIG_ENDIAN, ( byte )0xCD, ( byte )0xAB ) );
+    assertEquals( 0xCDAB, ByteOrderUtils.decode( ByteOrder.LITTLE_ENDIAN, ( byte )0xAB, ( byte )0xCD ) );
+    assertEquals( 0xABCD, ByteOrderUtils.decode( ByteOrder.LITTLE_ENDIAN, ( byte )0xCD, ( byte )0xAB ) );
   }
 
   /**
-   * Test method for
-   * {@link nl.lxtreme.cpemu.util.ByteOrderUtils#swap16(int)}.
+   * Test method for {@link nl.lxtreme.cpemu.util.ByteOrderUtils#swap16(int)}.
    */
   @Test
   public void testSwitchBigEndianByteOrder()
   {
-    assertEquals(0xCDAB, ByteOrderUtils.swap16(0xABCD));
+    assertEquals( 0xCDAB, ByteOrderUtils.swap16( 0xABCD ) );
   }
 
   /**
-   * Test method for
-   * {@link nl.lxtreme.cpemu.util.ByteOrderUtils#swap16(int)}.
+   * Test method for {@link nl.lxtreme.cpemu.util.ByteOrderUtils#swap16(int)}.
    */
   @Test
   public void testSwitchLittleEndianByteOrder()
   {
-    assertEquals(0xCDAB, ByteOrderUtils.swap16(0xABCD));
+    assertEquals( 0xCDAB, ByteOrderUtils.swap16( 0xABCD ) );
   }
 
 } /* ByteOrderTest */
