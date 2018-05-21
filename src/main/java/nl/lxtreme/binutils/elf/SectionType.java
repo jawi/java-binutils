@@ -43,12 +43,12 @@ public class SectionType {
         REL, SHLIB, DYNSYM, INIT_ARRAY, FINI_ARRAY, PREINIT_ARRAY, GROUP, SYMTAB_SHNDX, GNU_ATTRIBUTES, GNU_HASH,
         GNU_LIBLIST, CHECKSUM, SUNW_MOVE, SUNW_COMDAT, SUNW_SYMINFO, GNU_VERDEF, GNU_VERNEED, GNU_VERSYM };
 
-    private static final int SHT_LOOS = 0x60000000;
-    private static final int SHT_HIOS = 0x6fffffff;
-    private static final int SHT_LOPROC = 0x70000000;
-    private static final int SHT_HIPROC = 0x7fffffff;
-    private static final int SHT_LOUSER = 0x70000000;
-    private static final int SHT_HIUSER = 0x7fffffff;
+    private static final long SHT_LOOS = 0x60000000L;
+    private static final long SHT_HIOS = 0x6fffffffL;
+    private static final long SHT_LOPROC = 0x70000000L;
+    private static final long SHT_HIPROC = 0x7fffffffL;
+    private static final long SHT_LOUSER = 0x80000000L;
+    private static final long SHT_HIUSER = 0xffffffffL;
 
     public static SectionType valueOf(int value) {
         for (SectionType st : VALUES) {
