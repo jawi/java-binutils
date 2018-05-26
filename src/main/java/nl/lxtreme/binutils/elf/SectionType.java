@@ -38,17 +38,22 @@ public class SectionType {
     public static final SectionType GNU_VERDEF = new SectionType(0x6ffffffd, "GNU version definition section");
     public static final SectionType GNU_VERNEED = new SectionType(0x6ffffffe, "GNU version needs section");
     public static final SectionType GNU_VERSYM = new SectionType(0x6fffffff, "GNU version symbol table");
+    public static final SectionType SHT_ARM_EXIDX = new SectionType(0x70000001, "Exception Index table");
+    public static final SectionType SHT_ARM_PREEMPTMAP = new SectionType(0x70000002, "BPABI DLL dynamic linking pre-emption map");
+    public static final SectionType SHT_ARM_ATTRIBUTES = new SectionType(0x70000003, "Object file compatibility attributes");
+    public static final SectionType SHT_ARM_DEBUGOVERLAY = new SectionType(0x70000004, "DBGOVL 1");
+    public static final SectionType SHT_ARM_OVERLAYSECTION = new SectionType(0x70000005, "DBGOVL 2");
 
     private static final SectionType[] VALUES = { NULL, PROGBITS, SYMTAB, STRTAB, RELA, HASH, DYNAMIC, NOTE, NOBITS,
         REL, SHLIB, DYNSYM, INIT_ARRAY, FINI_ARRAY, PREINIT_ARRAY, GROUP, SYMTAB_SHNDX, GNU_ATTRIBUTES, GNU_HASH,
         GNU_LIBLIST, CHECKSUM, SUNW_MOVE, SUNW_COMDAT, SUNW_SYMINFO, GNU_VERDEF, GNU_VERNEED, GNU_VERSYM };
 
-    private static final int SHT_LOOS = 0x60000000;
-    private static final int SHT_HIOS = 0x6fffffff;
-    private static final int SHT_LOPROC = 0x70000000;
-    private static final int SHT_HIPROC = 0x7fffffff;
-    private static final int SHT_LOUSER = 0x70000000;
-    private static final int SHT_HIUSER = 0x7fffffff;
+    private static final long SHT_LOOS = 0x60000000L;
+    private static final long SHT_HIOS = 0x6fffffffL;
+    private static final long SHT_LOPROC = 0x70000000L;
+    private static final long SHT_HIPROC = 0x7fffffffL;
+    private static final long SHT_LOUSER = 0x80000000L;
+    private static final long SHT_HIUSER = 0xffffffffL;
 
     public static SectionType valueOf(int value) {
         for (SectionType st : VALUES) {
