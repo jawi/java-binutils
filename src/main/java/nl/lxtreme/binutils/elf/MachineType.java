@@ -91,7 +91,8 @@ public enum MachineType {
     AARCH64(183, "ARM AARCH64"),
     TILEPRO(188, "Tilera TILEPro"),
     MICROBLAZE(189, "Xilinx MicroBlaze"),
-    TILEGX(191, "Tilera TILE-Gx");
+    TILEGX(191, "Tilera TILE-Gx"),
+    BPF(247, "Extended Berkeley Packet Filter instruction set");
 
     private final int no;
     private final String desc;
@@ -115,3 +116,4 @@ public enum MachineType {
         return desc;
     }
 }
+
