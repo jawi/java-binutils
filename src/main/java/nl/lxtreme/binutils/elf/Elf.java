@@ -34,6 +34,16 @@ public class Elf implements Closeable
     return in;
   }
 
+  String getZString( long offset )
+  {
+	  try {
+		  return getZString( getDynamicStringTable(), offset );
+	  }
+	  catch (IOException ex) {
+	      throw new RuntimeException( "Unable to get dynamic string table!", ex );
+	  }
+  }
+  
   static String getZString( byte[] buf, long offset )
   {
     return getZString( buf, ( int )( offset & 0xFFFFFFFF ) );
@@ -181,7 +191,7 @@ public class Elf implements Closeable
         }
         Tag tag = Tag.valueOf( ( int )tagValue );
 
-        entries.add( new DynamicEntry( tag, value ) );
+        entries.add( new DynamicEntry( tag, value, this ) );
       }
 
       dynamicTable = entries.toArray( new DynamicEntry[entries.size()] );
@@ -289,7 +299,7 @@ public class Elf implements Closeable
     return sb;
   }
 
-  protected byte[] getDynamicStringTable() throws IOException
+  public byte[] getDynamicStringTable() throws IOException
   {
     SectionHeader dynStrHdr = getSectionHeaderByType( SectionType.STRTAB );
     if ( dynStrHdr == null )
@@ -484,7 +494,7 @@ public class Elf implements Closeable
     }
     catch ( IOException exception )
     {
-      throw new RuntimeException( "Unable to get dynamic string table!" );
+      throw new RuntimeException( "Unable to get dynamic string table!", exception );
     }
   }
 }
