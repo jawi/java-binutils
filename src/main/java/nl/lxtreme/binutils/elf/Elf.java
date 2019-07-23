@@ -86,14 +86,14 @@ public class Elf implements Closeable
   public final DynamicEntry[] dynamicTable;
 
   // locally managed.
-  private FileChannel channel;
+  private SeekableByteChannel channel;
 
   public Elf( File file ) throws IOException
   {
     this( FileChannel.open( file.toPath(), StandardOpenOption.READ ) );
   }
 
-  public Elf( FileChannel channel ) throws IOException
+  public Elf( SeekableByteChannel channel ) throws IOException
   {
     this.channel = channel;
     this.header = new Header( channel );
