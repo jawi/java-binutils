@@ -8,18 +8,19 @@
 package nl.lxtreme.binutils.elf;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
-import java.io.*;
-import java.net.*;
+import java.io.File;
 
-import org.junit.*;
+import org.junit.Test;
+
+import nl.lxtreme.binutils.AbstractTestCase;
 
 
 /**
  * Provides test cases for {@link Elf}.
  */
-public class ElfTest
+public class ElfTest extends AbstractTestCase
 {
   // METHODS
 
@@ -81,19 +82,4 @@ public class ElfTest
     }
   }
 
-  /**
-   * @param aName
-   * @return
-   * @throws URISyntaxException
-   */
-  private File getResource( String aName ) throws Exception
-  {
-    URL url = getClass().getClassLoader().getResource( aName );
-    if ( ( url != null ) && "file".equals( url.getProtocol() ) )
-    {
-      return new File( url.getPath() ).getCanonicalFile();
-    }
-    fail( "Resource " + aName + " not found!" );
-    return null; // to keep compiler happy...
-  }
 }

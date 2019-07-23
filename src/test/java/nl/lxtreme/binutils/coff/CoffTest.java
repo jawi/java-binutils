@@ -8,15 +8,14 @@
 package nl.lxtreme.binutils.coff;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
-import java.io.*;
-import java.net.*;
+import org.junit.Test;
 
-import org.junit.*;
+import nl.lxtreme.binutils.AbstractTestCase;
 
 
-public class CoffTest
+public class CoffTest extends AbstractTestCase
 {
 
   @Test
@@ -28,14 +27,4 @@ public class CoffTest
     }
   }
 
-  private File getResource( String aName ) throws Exception
-  {
-    URL url = getClass().getClassLoader().getResource( aName );
-    if ( ( url != null ) && "file".equals( url.getProtocol() ) )
-    {
-      return new File( url.getPath() ).getCanonicalFile();
-    }
-    fail( "Resource " + aName + " not found!" );
-    return null; // to keep compiler happy...
-  }
 }

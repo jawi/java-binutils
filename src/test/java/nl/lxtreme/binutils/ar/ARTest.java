@@ -12,19 +12,23 @@
 package nl.lxtreme.binutils.ar;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.io.File;
+import java.io.StringWriter;
+import java.util.Collection;
 
-import org.junit.*;
+import org.junit.Test;
+
+import nl.lxtreme.binutils.AbstractTestCase;
 
 
 /**
  * Test cases for AR.
  */
-public class ARTest
+public class ARTest extends AbstractTestCase
 {
   // METHODS
 
@@ -126,20 +130,4 @@ public class ARTest
     assertEquals(0, string.length());
   }
 
-  /**
-   * @param aName
-   * @return
-   * @throws URISyntaxException
-   */
-  private File getResource(String aName) throws Exception
-  {
-    URL url = getClass().getClassLoader().getResource(aName);
-    if ((url != null) && "file".equals(url.getProtocol()))
-    {
-    	String path = URLDecoder.decode(url.getPath(), "UTF-8");
-      return new File(path).getCanonicalFile();
-    }
-    fail("Resource " + aName + " not found!");
-    return null; // to keep compiler happy...
-  }
 }
