@@ -136,7 +136,8 @@ public class ARTest
     URL url = getClass().getClassLoader().getResource(aName);
     if ((url != null) && "file".equals(url.getProtocol()))
     {
-      return new File(url.getPath()).getCanonicalFile();
+    	String path = URLDecoder.decode(url.getPath(), "UTF-8");
+      return new File(path).getCanonicalFile();
     }
     fail("Resource " + aName + " not found!");
     return null; // to keep compiler happy...
