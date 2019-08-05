@@ -34,7 +34,7 @@ public class Elf implements Closeable
     return in;
   }
 
-  String getZString( long offset )
+  public String getZString( long offset )
   {
 	  try {
 		  return getZString( getDynamicStringTable(), offset );
