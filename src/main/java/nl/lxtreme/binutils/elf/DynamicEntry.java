@@ -156,10 +156,12 @@ public class DynamicEntry {
 
     private final Tag tag;
     private final long value;
+    private Elf parentElf;
 
-    public DynamicEntry(Tag tag, long value) {
+    public DynamicEntry(Tag tag, long value, Elf parentElf) {
         this.tag = tag;
         this.value = value;
+        this.parentElf = parentElf;
     }
 
     @Override
@@ -181,6 +183,12 @@ public class DynamicEntry {
 
     public long getValue() {
         return value;
+    }
+    
+    public String getValueAsString() {
+    	if (!isStringOffset())
+    		throw new RuntimeException("This is not a string entry");
+    	return parentElf.getZString(value);
     }
 
     public boolean isStringOffset() {
